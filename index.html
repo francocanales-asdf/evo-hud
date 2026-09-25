@@ -1,0 +1,1002 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Evo HUD</title>
+<style>
+html, body { margin:0; height:100%; background:#00050a; color:#ccffff; }
+/* HUD de voz de Evo. Clon del HUD de Jarvis (jarvis/ui/static/style.css):
+   mismos tokens, mismas medidas y animaciones. Todo va acotado a `.evo-hud`
+   para no tocar el resto de la SPA, que sigue con su tema claro. Los
+   keyframes y los anillos llevan prefijo `hud-` porque Tailwind ya define
+   `spin`, `ping` y la utilidad `ring` (un box-shadow azul). */
+.evo-hud {
+  --bg: #00050a;
+  --cyan: #00ddff;
+  --cyan-40: rgba(0, 221, 255, .4);
+  --cyan-20: rgba(0, 221, 255, .2);
+  --cyan-10: rgba(0, 221, 255, .1);
+  --cyan-05: rgba(0, 221, 255, .05);
+  --panel: rgba(0, 5, 10, .4);
+  --text: #ccffff;
+  --amber: #ff8c00;
+  --danger: #ff0000;
+  --ok: #00ddff;
+  --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  position: fixed; inset: 0; overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(0, 130, 160, .10), transparent 70%),
+    var(--bg);
+  color: var(--text);
+  font: 13px/1.5 var(--mono);
+  display: flex; flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+.evo-hud *, .evo-hud *::before, .evo-hud *::after { box-sizing: border-box; }
+.evo-hud button { font-family: var(--mono); }
+.evo-hud :focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+
+/* ============================================ CRT: scanline + trama */
+.evo-hud .crt { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
+.evo-hud .crt::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, .10) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, .03), rgba(0, 255, 0, .01), rgba(0, 0, 255, .03));
+  background-size: 100% 2px, 3px 100%;
+}
+.evo-hud .crt .scanline {
+  position: absolute; left: 0; right: 0; height: 90px;
+  background: linear-gradient(180deg, transparent, rgba(0, 229, 255, .045), transparent);
+  animation: hud-scan 7s linear infinite;
+}
+@keyframes hud-scan { from { top: -90px; } to { top: 100%; } }
+
+/* ============================================ HEADER */
+.evo-hud .topbar {
+  height: 64px; flex-shrink: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; gap: 20px;
+  border-bottom: 1px solid var(--cyan-20);
+  background: var(--panel); backdrop-filter: blur(10px);
+}
+.evo-hud .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.evo-hud .brand-ring {
+  width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  color: var(--cyan); border: 1px solid var(--cyan-40);
+  box-shadow: inset 0 0 12px var(--cyan-10), 0 0 14px var(--cyan-10);
+  animation: hud-breathe 4s ease-in-out infinite;
+}
+.evo-hud .brand-name { font-size: 14px; font-weight: 700; letter-spacing: .22em; color: var(--cyan); margin: 0; }
+.evo-hud .brand-sub { font-size: 9px; letter-spacing: .12em; color: var(--cyan-40); margin: 1px 0 0; }
+
+.evo-hud .head-metrics { display: flex; align-items: center; gap: 34px; }
+.evo-hud .hm { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.evo-hud .hm-label { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan-40); }
+.evo-hud .hm-value { font-size: 12px; font-weight: 700; color: var(--cyan); display: flex; align-items: center; gap: 7px; }
+.evo-hud .hm-value.tab { font-variant-numeric: tabular-nums; }
+.evo-hud .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger);
+  box-shadow: 0 0 8px currentColor; transition: background .3s; }
+.evo-hud .status-dot.ok { background: var(--cyan); animation: hud-dot-blink 2.4s ease-in-out infinite; }
+.evo-hud .status-dot.warn { background: var(--amber); }
+
+.evo-hud .head-actions { display: flex; align-items: center; gap: 14px; }
+.evo-hud .head-sep { width: 1px; height: 24px; background: var(--cyan-20); }
+.evo-hud .operator { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; color: var(--cyan); }
+.evo-hud .operator .avatar { width: 30px; height: 30px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--cyan-40), var(--cyan-10) 70%);
+  border: 1px solid var(--cyan-40); }
+
+.evo-hud .listen-pill {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none;
+  padding: 7px 14px; border-radius: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: .14em;
+  color: var(--cyan); border: 1px solid var(--cyan-40);
+  background: var(--cyan-05);
+  transition: color .2s, border-color .2s, box-shadow .2s, transform .1s;
+}
+.evo-hud .listen-pill:active { transform: scale(.97); }
+.evo-hud .listen-pill .pdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.evo-hud .listen-pill.state-listening .pdot { animation: hud-dot-blink 1.6s ease-in-out infinite; }
+.evo-hud .listen-pill.state-recording { box-shadow: 0 0 16px var(--cyan-20); }
+.evo-hud .listen-pill.state-thinking { color: var(--amber); border-color: rgba(255, 181, 69, .5); }
+.evo-hud .listen-pill.state-speaking { box-shadow: 0 0 16px var(--cyan-20); }
+.evo-hud .listen-pill.state-speaking .pdot { animation: hud-dot-blink .8s ease-in-out infinite; }
+.evo-hud .listen-pill.muted { color: var(--danger); border-color: rgba(255, 93, 108, .55); }
+.evo-hud .listen-pill.stop { color: var(--amber); border-color: rgba(255, 181, 69, .5);
+  background: rgba(255, 181, 69, .05); }
+.evo-hud .listen-pill.stop:hover { box-shadow: 0 0 14px rgba(255, 181, 69, .25); }
+.evo-hud .listen-pill .pdot.square { border-radius: 1px; }
+.evo-hud .listen-pill:disabled { opacity: .45; cursor: default; }
+@keyframes hud-dot-blink { 0%, 100% { opacity: .95; } 50% { opacity: .25; } }
+
+/* ============================================ GRID de 3 columnas */
+.evo-hud .grid3 { flex: 1; min-height: 0; display: flex; gap: 22px; padding: 22px; }
+.evo-hud .col { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+.evo-hud .col .grow { flex: 1; min-height: 0; }
+
+.evo-hud .panel {
+  position: relative; display: flex; flex-direction: column;
+  border: 1px solid var(--cyan-20); background: var(--panel);
+  backdrop-filter: blur(10px); padding: 13px 14px 14px;
+}
+.evo-hud .panel::before, .evo-hud .panel::after {
+  content: ""; position: absolute; width: 9px; height: 9px; pointer-events: none;
+}
+.evo-hud .panel::before { top: -1px; left: -1px; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+.evo-hud .panel::after { bottom: -1px; right: -1px; border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+
+.evo-hud .panel-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding-bottom: 9px; margin-bottom: 11px; border-bottom: 1px solid var(--cyan-10);
+}
+.evo-hud .ph-title { font-size: 10px; letter-spacing: .18em; color: var(--cyan-40); margin: 0; font-weight: 400; }
+.evo-hud .ph-title i { font-style: normal; color: var(--cyan-20); }
+.evo-hud .ph-title b { color: var(--cyan); }
+.evo-hud .ph-tag { font-size: 9px; letter-spacing: .1em; color: var(--cyan-40); font-variant-numeric: tabular-nums;
+  max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evo-hud .ph-dots { position: absolute; top: 5px; right: 6px; display: flex; gap: 3px; }
+.evo-hud .ph-dots i { width: 3px; height: 3px; border-radius: 50%; background: var(--cyan-40);
+  animation: hud-dot-blink 2.6s ease-in-out infinite; }
+.evo-hud .ph-dots i + i { background: var(--cyan-20); animation-delay: 1.3s; }
+
+.evo-hud .panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.evo-hud .panel-body.center { align-items: center; justify-content: center; }
+.evo-hud .panel-body.log { overflow-y: auto; gap: 6px; }
+.evo-hud .hud-empty { color: var(--cyan-40); font-size: 11px; }
+
+/* VOZ */
+.evo-hud .metric-row { display: flex; align-items: flex-start; justify-content: space-between; }
+.evo-hud .m-label { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan-40); }
+.evo-hud .m-big { font-size: 21px; font-weight: 700; color: var(--cyan); letter-spacing: .04em; margin-top: 2px; }
+.evo-hud .m-icon { width: 44px; height: 22px; color: var(--cyan-40); }
+.evo-hud .m-icon polyline { stroke-dasharray: 60 90; animation: hud-ekg 2.8s linear infinite; }
+@keyframes hud-ekg { to { stroke-dashoffset: -150; } }
+
+.evo-hud .vu-box, .evo-hud .vu { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
+.evo-hud .vu-box { padding: 6px 8px; border: 1px solid var(--cyan-10); background: var(--cyan-05); }
+.evo-hud .vu-box i, .evo-hud .vu i {
+  flex: 1; min-width: 3px; background: var(--cyan); opacity: .85;
+  height: 12%; transition: height 90ms linear;
+  box-shadow: 0 0 6px var(--cyan-20);
+}
+.evo-hud .vu { height: 26px; width: 130px; }
+.evo-hud .vu i { flex: none; width: 4px; }
+
+.evo-hud .tile-row { display: flex; gap: 9px; }
+.evo-hud .tile { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--cyan-10); background: var(--cyan-05); }
+.evo-hud .tile-v { font-size: 12px; font-weight: 700; color: var(--cyan); margin-top: 3px; letter-spacing: .06em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* CONTEXTO */
+.evo-hud .ctx-cards { max-height: min(232px, 26vh); overflow-y: auto; overflow-x: hidden; }
+.evo-hud .ctx-row { border-bottom: 1px solid var(--cyan-10); padding: 6px 0 8px; animation: hud-in .35s ease-out; }
+.evo-hud .ctx-row:last-child { border-bottom: 0; }
+.evo-hud .ctx-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.evo-hud .ctx-title { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan-40); }
+.evo-hud .ctx-value { font-size: 15px; font-weight: 700; color: var(--cyan); white-space: nowrap;
+  max-width: 175px; overflow: hidden; text-overflow: ellipsis; animation: hud-data-tick .6s ease-out; }
+.evo-hud .ctx-detail { font-size: 10px; color: var(--cyan-40); margin-top: 2px; }
+.evo-hud .ctx-detail a { color: var(--cyan); text-decoration: none; }
+.evo-hud .ctx-detail a:hover { text-decoration: underline; }
+@keyframes hud-in { from { opacity: 0; transform: translateX(-8px); } }
+@keyframes hud-data-tick { 0% { color: #fff; text-shadow: 0 0 12px var(--cyan); } }
+
+/* RED */
+.evo-hud .net-circle {
+  position: relative; flex: none; width: 120px; height: 120px; border-radius: 50%;
+  border: 1px solid var(--cyan-20); overflow: hidden;
+  background: radial-gradient(circle, var(--cyan-05), transparent 70%);
+}
+.evo-hud .p-red { min-height: 172px; }
+.evo-hud .p-red .panel-body { overflow: hidden; }
+.evo-hud .net-circle::after { content: ""; position: absolute; inset: 18px; border-radius: 50%;
+  border: 1px dashed var(--cyan-20); }
+.evo-hud .net-sweep { position: absolute; inset: 0;
+  background: conic-gradient(from 0deg, var(--cyan-20), transparent 70deg);
+  animation: hud-spin 4s linear infinite; }
+.evo-hud .net-ping { position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid var(--cyan-40); pointer-events: none;
+  animation: hud-ping 3.2s ease-out infinite; }
+.evo-hud .net-circle.down .net-sweep, .evo-hud .net-circle.down .net-ping { animation: none; opacity: .2; }
+@keyframes hud-ping { 0% { transform: scale(.25); opacity: .9; } 70%, 100% { transform: scale(1); opacity: 0; } }
+.evo-hud .net-label { font-size: 11px; font-weight: 700; letter-spacing: .16em; color: var(--cyan); margin-top: 12px; }
+.evo-hud .net-label.down { color: var(--danger); }
+.evo-hud .net-sub { font-size: 9px; letter-spacing: .18em; color: var(--cyan-40); margin-top: 3px; }
+
+/* AGENTES */
+.evo-hud .bar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.evo-hud .bar-v { font-size: 17px; font-weight: 700; color: var(--cyan); margin: 2px 0 5px; }
+.evo-hud .bar { height: 3px; background: var(--cyan-10); }
+.evo-hud .bar-fill { height: 100%; width: 0; background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan-40); transition: width .5s ease; }
+.evo-hud .bar-fill.dim { background: var(--cyan-40); }
+.evo-hud .agents-list { overflow-y: auto; min-height: 0; }
+.evo-hud .hud-agent { position: relative; display: block; width: 100%; text-align: left; background: none; border: 0;
+  font-size: 11px; color: var(--cyan-40); padding: 6px 0; border-bottom: 1px solid var(--cyan-10);
+  animation: hud-in .35s ease-out; }
+.evo-hud .hud-agent:last-child { border-bottom: 0; }
+.evo-hud .hud-agent b { color: var(--cyan); }
+.evo-hud .task-prog { margin-top: 5px; height: 2px; overflow: hidden; background: var(--cyan-10); }
+.evo-hud .task-prog-bar { height: 100%; width: 40%;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: hud-task-indet 1.3s ease-in-out infinite; }
+@keyframes hud-task-indet { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+.evo-hud .hud-agent.done { cursor: pointer; transition: color .2s; }
+.evo-hud .hud-agent.done:hover, .evo-hud .hud-agent.done:focus-visible { color: var(--cyan); outline: none; }
+.evo-hud .hud-agent .task-sello { font-size: 10px; letter-spacing: .08em; }
+.evo-hud .hud-agent.ok .task-sello { color: var(--ok); }
+.evo-hud .hud-agent.warn .task-sello { color: var(--amber); }
+.evo-hud .hud-agent.fail .task-sello { color: var(--danger); }
+.evo-hud .hud-agent .task-new { display: inline-block; width: 6px; height: 6px;
+  border-radius: 50%; margin-left: 8px; vertical-align: middle;
+  background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
+  animation: hud-dot-blink 1.6s ease-in-out infinite; }
+
+/* EN VIVO */
+.evo-hud .hap { font-size: 10.5px; line-height: 1.5; animation: hud-in .35s ease-out; }
+.evo-hud .hap .hap-time { color: var(--cyan-40); margin-right: 6px; }
+.evo-hud .hap .hap-title { color: var(--cyan); font-weight: 700; letter-spacing: .02em; }
+.evo-hud .hap .hap-detail { color: var(--cyan-40); padding-left: 4px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.evo-hud .hap.warn .hap-title { color: var(--amber); }
+.evo-hud .hap.alert .hap-title { color: var(--danger); }
+
+/* TERMINAL: actividad, errores y la línea de orden por texto */
+.evo-hud .terminal { border: 1px solid var(--cyan-10); background: rgba(0, 0, 0, .35);
+  padding: 9px 11px; min-height: 66px; display: flex; flex-direction: column; gap: 4px; }
+.evo-hud .t-line { font-size: 10.5px; color: var(--cyan); overflow-wrap: anywhere; }
+.evo-hud .t-line::before { content: "> "; color: var(--cyan-40); }
+.evo-hud .t-line.dim { color: var(--cyan-40); font-style: italic; }
+.evo-hud .t-line.err { color: var(--danger); }
+.evo-hud .t-input { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--cyan-10);
+  margin-top: 4px; padding-top: 6px; }
+.evo-hud .t-input span { color: var(--cyan-40); font-size: 10.5px; }
+.evo-hud .t-input input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0;
+  color: var(--text); font: 10.5px/1.5 var(--mono); caret-color: var(--cyan); }
+.evo-hud .t-input input::placeholder { color: var(--cyan-20); }
+.evo-hud .t-input input:disabled { opacity: .5; }
+
+/* ============================================ CENTRO: radar + núcleo */
+.evo-hud .core-col { position: relative; flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.evo-hud .corner { position: absolute; width: 22px; height: 22px; }
+.evo-hud .corner.tl { top: 6px; left: 6px; border-top: 1px solid var(--cyan-40); border-left: 1px solid var(--cyan-40); }
+.evo-hud .corner.tr { top: 6px; right: 6px; border-top: 1px solid var(--cyan-40); border-right: 1px solid var(--cyan-40); }
+.evo-hud .corner.bl { bottom: 6px; left: 6px; border-bottom: 1px solid var(--cyan-40); border-left: 1px solid var(--cyan-40); }
+.evo-hud .corner.br { bottom: 6px; right: 6px; border-bottom: 1px solid var(--cyan-40); border-right: 1px solid var(--cyan-40); }
+
+.evo-hud .core-stage { position: relative; width: min(58vmin, 560px); height: min(58vmin, 560px); }
+.evo-hud .orb3d { position: absolute; inset: 0; opacity: .55; }
+.evo-hud .core-stage .hud-ring { position: absolute; border-radius: 50%; }
+.evo-hud .r-dash { inset: 0; border: 2px dashed var(--cyan-20); animation: hud-spin 60s linear infinite; }
+.evo-hud .r-solid { inset: 7%; border: 1px solid var(--cyan-40); }
+.evo-hud .r-solid .tick { position: absolute; left: 50%; transform: translateX(-50%);
+  width: 26px; height: 5px; background: var(--cyan); box-shadow: 0 0 10px var(--cyan-40); }
+.evo-hud .r-solid .t-top { top: -3px; }
+.evo-hud .r-solid .t-bot { bottom: -3px; }
+.evo-hud .r-inner { inset: 20%; border: 2px solid var(--cyan-20); }
+.evo-hud .cross { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--cyan-10); }
+.evo-hud .cross.x2 { transform: rotate(60deg); }
+.evo-hud .cross.x3 { transform: rotate(-60deg); }
+.evo-hud .blip { position: absolute; width: 22px; height: 6px; background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan-40); border-radius: 2px; }
+.evo-hud .blip.b1 { top: 24%; right: 17%; transform: rotate(45deg); }
+.evo-hud .blip.b2 { bottom: 27%; left: 15%; transform: rotate(45deg); }
+
+.evo-hud .core { position: absolute; inset: 35%; border-radius: 50%;
+  border: 1px solid var(--cyan-40); display: grid; place-items: center;
+  background: radial-gradient(circle, var(--cyan-10), transparent 75%);
+  animation: hud-breathe 3.2s ease-in-out infinite; }
+.evo-hud .core-state { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-align: center;
+  color: var(--cyan); text-shadow: 0 0 14px var(--cyan-40); line-height: 1.7; }
+
+.evo-hud .core-dock { position: absolute; bottom: 26px; left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.evo-hud .cmd-pill { display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 18px; border: 1px solid var(--cyan-40); background: var(--cyan-05);
+  border-radius: 4px; color: var(--cyan); cursor: pointer; }
+.evo-hud .cmd-label { font-size: 11px; font-weight: 700; letter-spacing: .22em; }
+.evo-hud .dock-input { display: none; width: min(420px, 86vw); }
+
+/* ============================================ FOOTER */
+.evo-hud .botbar {
+  height: 46px; flex-shrink: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; gap: 16px;
+  border-top: 1px solid var(--cyan-20);
+  background: var(--panel); backdrop-filter: blur(10px);
+  font-size: 9px; letter-spacing: .16em; color: var(--cyan-40);
+}
+.evo-hud .foot-l { display: flex; gap: 16px; }
+.evo-hud .foot-chip { font-weight: 700; }
+.evo-hud .foot-chip.on { color: var(--cyan); }
+.evo-hud .foot-r { display: flex; align-items: center; gap: 14px; }
+.evo-hud .foot-sep { width: 1px; height: 14px; background: var(--cyan-20); }
+
+/* ============================================ escenario: respuesta y entregas */
+.evo-hud .stage-overlay { position: absolute; inset: 86px 344px 68px; z-index: 12; }
+.evo-hud .stage-body { width: 100%; height: 100%; overflow-y: auto; border: 1px solid var(--cyan-20);
+  background: rgba(1, 8, 10, .93); backdrop-filter: blur(6px); padding: 16px 18px;
+  font: 12px/1.55 var(--mono); color: var(--text);
+  animation: hud-canvas-in .4s cubic-bezier(.2, .8, .2, 1); }
+.evo-hud .stage-title { position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap;
+  color: var(--cyan); padding: 4px 14px; background: var(--bg); border: 1px solid var(--cyan-40); }
+.evo-hud .stage-close { position: absolute; top: 8px; right: 10px; background: none; cursor: pointer;
+  border: 1px solid var(--cyan-20); color: var(--cyan-40); font-size: 10px; letter-spacing: .14em; padding: 4px 8px; }
+.evo-hud .stage-close:hover { color: var(--cyan); border-color: var(--cyan-40); }
+.evo-hud .stage-body p { color: rgba(204, 255, 255, .8); margin: 8px 0; font-size: 11.5px; white-space: pre-wrap; }
+.evo-hud .stage-body h3 { color: var(--cyan); font-size: 12px; font-weight: 700; letter-spacing: .18em;
+  text-transform: uppercase; margin: 14px 0 10px; }
+.evo-hud .stage-body h3:first-child { margin-top: 0; }
+.evo-hud .stage-body ul, .evo-hud .stage-body ol { margin: 8px 0; padding-left: 20px; color: rgba(204, 255, 255, .8); font-size: 11.5px; }
+.evo-hud .stage-body ul { list-style: square; }
+.evo-hud .stage-body ol { list-style: decimal; }
+.evo-hud .stage-body li { margin: 3px 0; }
+.evo-hud .stage-body li::marker { color: var(--cyan-40); }
+.evo-hud .stage-body strong { color: var(--cyan); font-weight: 700; }
+.evo-hud .stage-body code { color: var(--text); background: var(--cyan-05); border: 1px solid var(--cyan-10); padding: 0 4px; }
+.evo-hud .stage-body .note { border-left: 2px solid var(--cyan-40); padding: 6px 10px; margin: 12px 0;
+  color: rgba(204, 255, 255, .7); font-size: 11px; }
+.evo-hud .stage-body img { max-width: 100%; max-height: 60vh; border: 1px solid var(--cyan-20); }
+.evo-hud .stage-body a { color: var(--cyan); }
+@keyframes hud-canvas-in { from { opacity: 0; transform: scale(.99); } to { opacity: 1; transform: none; } }
+
+/* ============================================ activación (boot) */
+.evo-hud .activate { position: absolute; inset: 0; z-index: 20; background: #010507;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity .6s; }
+.evo-hud .activate.gone { opacity: 0; pointer-events: none; }
+.evo-hud .boot { width: min(420px, 86vw); }
+.evo-hud .boot-head { display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 11px; letter-spacing: .1em; color: var(--cyan); margin-bottom: 8px; }
+.evo-hud .boot-pct { font-variant-numeric: tabular-nums; }
+.evo-hud .boot-dots::after { content: "…"; animation: hud-boot-dots 1.2s steps(4) infinite; }
+@keyframes hud-boot-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "…"; } }
+.evo-hud .boot-bar { height: 2px; background: var(--cyan-10); margin-bottom: 14px; }
+.evo-hud .boot-fill { height: 100%; width: 0; background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan-40); transition: width .35s ease; }
+.evo-hud .boot-cols { display: flex; justify-content: space-between; gap: 20px; min-height: 64px; }
+.evo-hud .boot-log { font-size: 10px; line-height: 1.6; color: var(--cyan-40); }
+.evo-hud .boot-log .done { color: var(--cyan); }
+.evo-hud .boot-log div::before { content: "> "; }
+.evo-hud .boot-tags { font-size: 10px; line-height: 1.6; color: var(--cyan-20); text-align: right; letter-spacing: .08em; }
+.evo-hud .boot-ready { margin-top: 26px; text-align: center; font-size: 13px; font-weight: 700;
+  letter-spacing: .34em; color: var(--cyan); animation: hud-dot-blink 1.6s ease-in-out infinite; }
+.evo-hud .boot-note { margin-top: 12px; text-align: center; font-size: 10px; letter-spacing: .1em; color: var(--amber); }
+.evo-hud .boot-credit { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center;
+  font-size: 10px; letter-spacing: .18em; color: var(--cyan-40); }
+@keyframes hud-spin { to { transform: rotate(360deg); } }
+@keyframes hud-breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.04); opacity: .85; } }
+
+/* ============================================ aprobaciones */
+.evo-hud .approvals { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 30;
+  width: min(640px, 92%); display: flex; flex-direction: column; gap: 12px; }
+.evo-hud .approval { border: 1px solid rgba(255, 181, 69, .5);
+  background: rgba(20, 14, 4, .95); backdrop-filter: blur(10px); padding: 13px 15px;
+  animation: hud-canvas-in .3s cubic-bezier(.2, .8, .2, 1); }
+.evo-hud .approval.resolved { opacity: .5; border-color: var(--cyan-20); }
+.evo-hud .approval-title { font-size: 10px; font-weight: 700; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--amber); margin-bottom: 8px; }
+.evo-hud .approval pre { background: rgba(0, 0, 0, .5); border: 1px solid rgba(255, 181, 69, .2);
+  padding: 10px; overflow-x: auto; font: 11px/1.5 var(--mono); margin: 0 0 11px; white-space: pre-wrap; }
+.evo-hud .approval-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.evo-hud .approval-actions button { background: var(--cyan-05); color: var(--text);
+  border: 1px solid var(--cyan-20); padding: 7px 15px; cursor: pointer;
+  font-size: 11px; font-weight: 700; }
+.evo-hud .approval-actions .approve { border-color: var(--ok); }
+.evo-hud .approval-actions .deny { border-color: var(--danger); }
+.evo-hud .approval-actions button:disabled { opacity: .5; cursor: default; }
+.evo-hud .approval-note { color: var(--amber); font-size: 11px; margin-left: auto; }
+
+.evo-hud ::-webkit-scrollbar { width: 6px; }
+.evo-hud ::-webkit-scrollbar-thumb { background: var(--cyan-20); }
+.evo-hud ::-webkit-scrollbar-track { background: transparent; }
+
+.evo-hud .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* columnas fuera en pantallas angostas: el centro manda; la orden por texto
+   baja al dock para que siga disponible */
+@media (max-width: 1150px) {
+  .evo-hud .col { display: none; }
+  .evo-hud .stage-overlay { inset: 86px 24px 68px; }
+  .evo-hud .dock-input { display: flex; }
+  .evo-hud .head-metrics { display: none; }
+}
+@media (max-width: 640px) {
+  .evo-hud .topbar { padding: 0 12px; gap: 10px; }
+  .evo-hud .brand-sub, .evo-hud .operator span, .evo-hud .head-sep { display: none; }
+  .evo-hud .head-actions { gap: 6px; }
+  .evo-hud .listen-pill { padding: 6px 8px; letter-spacing: .08em; }
+  .evo-hud .botbar { padding: 0 12px; }
+  .evo-hud .foot-r { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .evo-hud *, .evo-hud *::before, .evo-hud *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Ajustes propios de esta demo: el HUD es la app entera. */
+.evo-hud .kpi-row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; border-bottom:1px solid var(--cyan-10); padding:6px 0; font-size:11px; color:var(--cyan-40); }
+.evo-hud .kpi-row:last-child { border-bottom:0; }
+.evo-hud .kpi-row b { color:var(--cyan); font-size:13px; white-space:nowrap; }
+.evo-hud .kpi-row .warn { color:var(--amber); }
+.evo-hud .evo-line { position:absolute; left:50%; bottom:96px; transform:translateX(-50%); width:min(560px, 90%); text-align:center; font-size:12.5px; line-height:1.55; color:var(--text); text-shadow:0 0 12px rgba(0,0,0,.8); pointer-events:none; }
+.evo-hud .evo-line b { color:var(--cyan); letter-spacing:.14em; font-size:10px; margin-right:6px; }
+.evo-hud .approval-actions button.pill-c { border-color: var(--cyan-40); }
+.evo-hud .net-circle { width:88px; height:88px; }
+.evo-hud .p-red { min-height:150px; }
+.evo-hud .ctx-cards { max-height: min(200px, 24vh); }
+@media (max-width: 1150px) { .evo-hud .core-dock { bottom: 14px; } .evo-hud .evo-line { bottom: 118px; } .evo-hud .approvals { bottom: 170px; } }
+.evo-hud .hm-delta { font-size:9px; letter-spacing:.06em; color:var(--cyan-40); }
+.evo-hud .hm-delta.good { color:#5ef2a6; }
+.evo-hud .hm-big { font-size:17px; }
+.evo-hud .rank { margin-top:4px; height:3px; background:var(--cyan-10); }
+.evo-hud .rank i { display:block; height:100%; background:var(--cyan); box-shadow:0 0 8px var(--cyan-40); }
+.evo-hud .rec { font-size:10px; color:var(--text); margin-top:3px; }
+.evo-hud .mini-btn { background:var(--cyan-05); border:1px solid var(--cyan-20); color:var(--cyan); font-size:9px; letter-spacing:.1em; padding:3px 8px; cursor:pointer; margin-top:4px; margin-right:6px; }
+.evo-hud .mini-btn:hover { border-color:var(--cyan-40); }
+.evo-hud .mini-btn.ok { border-color:#5ef2a6; color:#5ef2a6; }
+.evo-hud .conf { font-size:9px; letter-spacing:.1em; color:var(--cyan-40); }
+.evo-hud .conf b { color:var(--amber); }
+.evo-hud .conf b.alta { color:#5ef2a6; }
+.evo-hud .dec { border-bottom:1px solid var(--cyan-10); padding:6px 0; font-size:10.5px; color:var(--cyan-40); }
+.evo-hud .dec:last-child { border-bottom:0; }
+.evo-hud .dec b { color:var(--cyan); display:block; font-size:11px; }
+.evo-hud .week-bars { display:flex; align-items:flex-end; gap:6px; height:40px; padding:6px 8px; border:1px solid var(--cyan-10); background:var(--cyan-05); }
+.evo-hud .week-bars div { flex:1; display:flex; align-items:flex-end; gap:2px; height:100%; }
+.evo-hud .week-bars i { flex:1; background:var(--cyan); box-shadow:0 0 6px var(--cyan-20); }
+.evo-hud .week-bars i.prev { background:var(--cyan-20); box-shadow:none; }
+.evo-hud .days { display:flex; gap:6px; padding:0 8px; font-size:8px; color:var(--cyan-40); letter-spacing:.1em; }
+.evo-hud .days span { flex:1; text-align:center; }
+.evo-hud #p-aprobar { max-height: 30vh; }
+.evo-hud .col { overflow-y: auto; }
+.evo-hud #p-semana .kpi-row span span { display:none; }
+.evo-hud #p-semana .kpi-row em { font-style:normal; font-size:9px; color:var(--cyan-40); margin-left:6px; }
+.evo-hud #p-aprobar .panel-body { overflow-y:auto; }
+.evo-hud #p-hice { min-height: 120px; }
+.evo-hud #p-canales .ctx-cards { max-height:none; }
+.evo-hud #p-alertas .hap-detail { -webkit-line-clamp: 4; }
+.evo-hud .dec .conf b { display:inline; font-size:9px; }
+.evo-hud .hm { max-width: 190px; }
+.evo-hud .hm-label, .evo-hud .hm-delta { white-space: nowrap; }
+.evo-hud #p-semana .kpi-row { padding: 3px 0; }
+
+.evo-hud .listen-pill, .evo-hud .brand-sub { white-space:nowrap; }
+.evo-hud .head-actions { gap:8px; }
+.evo-hud .head-metrics { flex-shrink:1; min-width:0; }
+@media (max-width: 1350px) { .evo-hud #btn-guide .pl, .evo-hud #btn-boards .pl { display:none; } .evo-hud .operator span, .evo-hud .head-sep { display:none; } .evo-hud .hm { max-width:150px; min-width:0; overflow:hidden; } .evo-hud .hm-label, .evo-hud .hm-delta { overflow:hidden; text-overflow:ellipsis; max-width:100%; display:block; text-align:right; } .evo-hud .hm-big { font-size:15px; } .evo-hud .head-metrics { gap:14px; } }
+@media (max-width: 640px) { .evo-hud .brand-sub { display:none; } .evo-hud .brand-ring { display:none; } .evo-hud .head-actions .listen-pill .pdot { display:none; } .evo-hud .operator { display:none; } }
+/* Guía: siempre a mano con GUÍAME o con el «?» de cada panel. */
+.evo-hud .ph-help { background:none; border:1px solid var(--cyan-20); color:var(--cyan-40); width:17px; height:17px; font-size:10px; line-height:1; padding:0; cursor:pointer; margin-left:6px; flex-shrink:0; }
+.evo-hud .ph-help:hover { color:var(--cyan); border-color:var(--cyan-40); }
+.evo-hud .tour { position:absolute; inset:0; z-index:60; }
+.evo-hud .tour-hole { position:absolute; border:1px solid var(--cyan); box-shadow:0 0 0 9999px rgba(0,4,8,.78), 0 0 22px var(--cyan-40); transition:all .35s ease; pointer-events:none; }
+.evo-hud .tour-card { position:absolute; width:min(340px, calc(100vw - 32px)); background:#01080d; border:1px solid var(--cyan-40); padding:13px 14px 11px; box-shadow:0 0 30px rgba(0,221,255,.12); transition:top .35s ease, left .35s ease; }
+.evo-hud .tour-card .tc-step { font-size:9px; letter-spacing:.16em; color:var(--cyan-40); display:flex; justify-content:space-between; }
+.evo-hud .tour-card h3 { margin:4px 0 6px; color:var(--cyan); font-size:11px; letter-spacing:.16em; }
+.evo-hud .tour-card p { margin:0 0 10px; font-size:12px; line-height:1.55; color:var(--text); }
+.evo-hud .tour-card .tc-actions { display:flex; gap:6px; align-items:center; }
+.evo-hud .tour-card .tc-actions .grow { flex:1; }
+.evo-hud .tour-dots { display:flex; gap:3px; margin-bottom:9px; }
+.evo-hud .tour-dots i { flex:1; height:2px; background:var(--cyan-10); }
+.evo-hud .tour-dots i.on { background:var(--cyan); }
+
+/* Tableros: Evo convierte una pregunta en un gráfico, una conclusión y qué haría. */
+.evo-hud .boards { position:absolute; inset:86px max(24px, calc(50% - 400px)) 68px; z-index:40; background:#01080d; border:1px solid var(--cyan-40); display:flex; flex-direction:column; box-shadow:0 0 40px rgba(0,221,255,.1); }
+.evo-hud .boards-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--cyan-20); font-size:11px; letter-spacing:.16em; color:var(--cyan); }
+.evo-hud .boards-head .grow { flex:1; }
+.evo-hud .boards-body { flex:1; overflow-y:auto; padding:14px; }
+.evo-hud .boards-body h4 { margin:14px 0 6px; font-size:9px; letter-spacing:.18em; color:var(--cyan-40); font-weight:400; }
+.evo-hud .boards-body h4:first-child { margin-top:0; }
+.evo-hud .chip { display:inline-block; background:var(--cyan-05); border:1px solid var(--cyan-20); color:var(--text); font-size:11px; padding:6px 10px; margin:0 6px 6px 0; cursor:pointer; text-align:left; }
+.evo-hud .chip:hover { border-color:var(--cyan); }
+.evo-hud .building div { font-size:11px; color:var(--cyan-40); padding:3px 0; }
+.evo-hud .building div.done { color:var(--cyan); }
+.evo-hud .building div.done::before { content:'✓ '; }
+.evo-hud .board-card { border:1px solid var(--cyan-20); background:var(--cyan-05); padding:14px; }
+.evo-hud .board-q { font-size:10px; color:var(--cyan-40); letter-spacing:.06em; }
+.evo-hud .board-insight { font-size:15px; line-height:1.45; color:var(--text); margin:6px 0 12px; }
+.evo-hud .board-insight b { color:var(--cyan); }
+.evo-hud .bchart { display:grid; grid-template-columns:minmax(90px, 30%) 1fr auto; gap:6px 10px; align-items:center; font-size:11px; margin-bottom:12px; }
+.evo-hud .bchart .bl { color:var(--cyan-40); }
+.evo-hud .bchart .bt { height:14px; background:var(--cyan-10); position:relative; }
+.evo-hud .bchart .bt i { position:absolute; left:0; top:0; bottom:0; background:var(--cyan); box-shadow:0 0 8px var(--cyan-40); transition:width .7s ease; }
+.evo-hud .bchart .bt u { position:absolute; left:0; bottom:-4px; height:2px; background:var(--amber); text-decoration:none; }
+.evo-hud .bchart .bv { color:var(--cyan); white-space:nowrap; }
+.evo-hud .board-legend { font-size:9px; color:var(--cyan-40); letter-spacing:.08em; margin:-6px 0 12px; }
+.evo-hud .board-legend span::before { content:''; display:inline-block; width:10px; height:3px; margin-right:5px; vertical-align:middle; background:var(--cyan); }
+.evo-hud .board-legend span.amb::before { background:var(--amber); }
+.evo-hud .board-legend span + span { margin-left:12px; }
+.evo-hud .board-do { border-left:2px solid var(--cyan); padding:6px 10px; font-size:12px; margin-bottom:8px; }
+.evo-hud .board-do b { color:var(--cyan); font-size:9px; letter-spacing:.16em; display:block; }
+.evo-hud .board-src { font-size:9px; color:var(--cyan-40); letter-spacing:.06em; margin-bottom:8px; }
+.evo-hud .saved-row { display:flex; gap:10px; align-items:center; border-bottom:1px solid var(--cyan-10); padding:7px 0; font-size:11px; cursor:pointer; }
+.evo-hud .saved-row:hover { color:var(--cyan); }
+.evo-hud .saved-row .grow { flex:1; }
+.evo-hud .saved-row em { font-style:normal; font-size:9px; color:var(--cyan-40); }
+.evo-hud .boards .t-input { border:1px solid var(--cyan-20); padding:8px 10px; margin-bottom:12px; }
+@media (max-width: 640px) { .evo-hud .board-insight { font-size:13px; } }
+/* ============================================ MAQUETACIÓN ESTABLE
+   Nada tiene alto forzado: cada panel mide lo que su texto necesita y la
+   página hace scroll. Así ningún texto se corta, se recorta con «…» ni se
+   monta sobre otro, en ningún ancho de pantalla. */
+html, body { height:auto; min-height:100%; }
+.evo-hud { position:relative; inset:auto; min-height:100vh; overflow:visible; }
+.evo-hud .crt { position:fixed; }
+.evo-hud .topbar { height:auto; min-height:64px; padding:10px 22px; flex-wrap:wrap; row-gap:10px; position:sticky; top:0; z-index:15; background:rgba(0,5,10,.88); }
+.evo-hud .head-actions { flex-wrap:wrap; justify-content:flex-end; }
+
+.evo-hud .kpis { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; padding:18px 22px 0; }
+.evo-hud .kpi { display:flex; flex-direction:column; gap:4px; padding:12px 16px; border:1px solid var(--cyan-20); background:var(--panel); min-width:0; }
+.evo-hud .kpi-label { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--cyan-40); }
+.evo-hud .kpi-value { font-size:26px; font-weight:700; color:var(--cyan); letter-spacing:.02em; font-variant-numeric:tabular-nums; line-height:1.15; }
+.evo-hud .kpi-delta { font-size:11px; color:var(--cyan-40); }
+.evo-hud .kpi-delta.good { color:#5ef2a6; }
+
+.evo-hud .grid3 { flex:none; display:grid; grid-template-columns:minmax(270px,330px) minmax(0,1fr) minmax(270px,330px); align-items:start; gap:22px; padding:22px; }
+.evo-hud .col { width:auto; overflow:visible; min-height:0; }
+.evo-hud .col .grow { flex:none; }
+.evo-hud .panel-body, .evo-hud .panel-body.log, .evo-hud #p-aprobar .panel-body { overflow:visible; flex:none; }
+.evo-hud #p-aprobar { max-height:none; }
+.evo-hud #p-hice { min-height:0; }
+.evo-hud .ctx-cards, .evo-hud #p-canales .ctx-cards { max-height:none; overflow:visible; }
+.evo-hud .hap { display:flex; flex-direction:column; gap:2px; padding:6px 0; border-bottom:1px solid var(--cyan-10); }
+.evo-hud .hap:last-child { border-bottom:0; }
+.evo-hud .hap .hap-detail, .evo-hud #p-alertas .hap-detail { display:block; -webkit-line-clamp:unset; overflow:visible; padding-left:0; }
+.evo-hud .hap .mini-btn { align-self:flex-start; }
+
+/* Cabecera de panel: título arriba, etiqueta debajo; nunca se pisan. */
+.evo-hud .panel-head { flex-wrap:wrap; align-items:center; row-gap:4px; padding-right:14px; }
+.evo-hud .ph-title { flex:1 1 auto; min-width:0; }
+.evo-hud .ph-tag { order:3; flex-basis:100%; max-width:none; white-space:normal; overflow:visible; }
+.evo-hud .ph-help { order:2; margin-left:auto; }
+.evo-hud .ph-dots { top:4px; right:4px; }
+
+/* TU PLATA: la etiqueta no choca con el trazo. */
+.evo-hud .metric-row { gap:10px; }
+.evo-hud .metric-row > div { flex:1; min-width:0; }
+.evo-hud .m-icon { flex:none; }
+
+/* LA SEMANA: nombre a la izquierda; cifra y «antes» apilados a la derecha. */
+.evo-hud .kpi-row, .evo-hud #p-semana .kpi-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; padding:7px 0; }
+.evo-hud .kpi-row > span:last-child { display:flex; flex-direction:column; align-items:flex-end; text-align:right; }
+.evo-hud #p-semana .kpi-row em { margin-left:0; font-size:9.5px; }
+.evo-hud #p-semana .panel-body { gap:0; }
+.evo-hud #p-semana .mini-btn { margin-top:10px; }
+.evo-hud .dec b { margin-bottom:2px; }
+.evo-hud .dec .conf { margin-top:4px; }
+.evo-hud .ctx-top { flex-wrap:wrap; }
+
+/* Centro: orbe, frase de Evo y botón, uno debajo del otro. */
+.evo-hud .core-col { position:sticky; top:96px; min-height:min(calc(100vh - 140px), 760px); padding:40px 16px 28px; justify-content:center; gap:22px; }
+.evo-hud .core-stage { width:min(46vmin, 480px, 100%); height:auto; aspect-ratio:1; }
+.evo-hud .core-dock { position:static; width:100%; }
+.evo-hud .evo-line { position:static; transform:none; width:min(560px, 100%); min-height:3.2em; margin:0; }
+.evo-hud .dock-input { width:min(420px, 100%); }
+.evo-hud .core-col .corner.bl, .evo-hud .core-col .corner.br { bottom:-4px; }
+.evo-hud .core-col { padding-bottom:36px; }
+
+/* El estado de Evo siempre legible, aunque el orbe se junte detrás. */
+.evo-hud .core-state { position:relative; z-index:2; background:rgba(0,5,10,.82); padding:4px 12px; border-radius:4px; box-shadow:0 0 18px rgba(0,5,10,.9); }
+
+/* Pie: los mensajes pasan a la línea siguiente en vez de amontonarse. */
+.evo-hud .botbar { height:auto; min-height:46px; padding:12px 22px; flex-wrap:wrap; row-gap:8px; line-height:1.6; }
+.evo-hud .foot-l { flex-wrap:wrap; gap:6px 18px; }
+
+/* Capas encima de todo: fijas a la ventana, no a la página. */
+.evo-hud .activate, .evo-hud .tour { position:fixed; }
+.evo-hud .boards { position:fixed; inset:24px max(16px, calc(50% - 400px)); }
+.evo-hud .stage-overlay { position:fixed; inset:90px max(16px, calc(50% - 420px)) 40px; }
+.evo-hud .approvals { position:static; transform:none; width:min(560px, 100%); }
+.evo-hud .approval pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+
+@media (max-width: 1350px) { .evo-hud #btn-guide .pl, .evo-hud #btn-boards .pl { display:inline; } }
+@media (max-width: 1100px) {
+  .evo-hud .grid3 { grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .evo-hud .core-col { grid-column:1 / -1; order:-1; position:relative; top:auto; min-height:0; padding:28px 12px 22px; }
+  .evo-hud .core-stage { width:min(60vw, 380px); }
+  .evo-hud .col { display:flex; }
+  .evo-hud .dock-input { display:flex; }
+  .evo-hud .kpi-value { font-size:22px; }
+}
+@media (max-width: 720px) {
+  .evo-hud .topbar { padding:10px 14px; }
+  .evo-hud .kpis { grid-template-columns:1fr; gap:10px; padding:14px 14px 0; }
+  .evo-hud .kpi { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:12px; align-items:baseline; }
+  .evo-hud .kpi-value { grid-column:2; grid-row:1 / span 2; font-size:22px; }
+  .evo-hud .grid3 { grid-template-columns:1fr; padding:14px; gap:16px; }
+  .evo-hud .core-stage { width:min(72vw, 300px); }
+  .evo-hud .botbar { padding:12px 14px; }
+  .evo-hud .foot-l { flex-direction:column; gap:4px; }
+  .evo-hud .boards { inset:12px 8px; }
+  .evo-hud .stage-overlay { inset:72px 8px 16px; }
+  .evo-hud .approval-note { margin-left:0; flex-basis:100%; }
+}
+</style>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React
+/* ---------------------------------------------------------------- Orbe */
+function createOrb(canvas) {
+  const ctx = canvas.getContext('2d'); const N = 900, P = []; const golden = Math.PI * (3 - Math.sqrt(5))
+  for (let i = 0; i < N; i++) { const y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), th = golden * i, u = (i * 0.618033) % 1; P.push({ dx: Math.cos(th) * r, dy: y, dz: Math.sin(th) * r, u, r: .6, ph: u * 6.28, sz: .6 + u * 1.2 }) }
+  const MODES = { off: { dist: u => .30 + .65 * Math.pow(u, .38), alpha: .35, speed: .04, glow: .1 }, listening: { dist: u => .06 + .42 * Math.pow(u, 3), alpha: .95, speed: .22, glow: .9 }, speaking: { dist: () => .78, alpha: .9, speed: .3, glow: .3 } }
+  let mode = MODES.off, cur = { alpha: .35, glow: .1 }, rot = 0, t = 0, raf = 0, alive = true, W = 1, H = 1
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+  function resize() { const dpr = Math.min(devicePixelRatio || 1, 2), rect = canvas.parentElement.getBoundingClientRect(); W = Math.max(1, rect.width); H = Math.max(1, rect.height); canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + 'px'; canvas.style.height = H + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0) }
+  addEventListener('resize', resize); resize()
+  // Tailwind (CDN) aplica los estilos despues del primer render: el tamano del
+  // contenedor cambia tras montar, asi que se observa en vez de medir una vez.
+  const ro = typeof ResizeObserver !== 'undefined' && canvas.parentElement ? new ResizeObserver(resize) : null
+  if (ro) ro.observe(canvas.parentElement)
+  function frame() {
+    if (!alive) return; t += .016; rot += mode.speed * .016; cur.alpha += (mode.alpha - cur.alpha) * .05; cur.glow += (mode.glow - cur.glow) * .05
+    ctx.clearRect(0, 0, W, H); const R = Math.min(W, H) * .42, cx = W / 2, cy = H / 2
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.1); g.addColorStop(0, `rgba(0,221,255,${.25 * cur.glow})`); g.addColorStop(1, 'rgba(0,221,255,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    const cr = Math.cos(rot), sr = Math.sin(rot), cx2 = Math.cos(-.28), sx2 = Math.sin(-.28)
+    for (const p of P) { p.r += (mode.dist(p.u) - p.r) * .06; const wob = 1 + Math.sin(t * 1.3 + p.ph) * .03; const x = p.dx * p.r * wob, y = p.dy * p.r * wob, z = p.dz * p.r * wob; const x1 = x * cr - z * sr, z1 = x * sr + z * cr; const y2 = y * cx2 - z1 * sx2, z2 = y * sx2 + z1 * cx2; const d = (z2 + 1) / 2; ctx.globalAlpha = cur.alpha * (.25 + .75 * d); ctx.fillStyle = d > .6 ? '#ccffff' : '#00ddff'; ctx.beginPath(); ctx.arc(cx + x1 * R, cy + y2 * R, p.sz * (.5 + d), 0, 6.283); ctx.fill() }
+    ctx.globalAlpha = 1; if (reduced) setTimeout(frame, 400); else raf = requestAnimationFrame(frame)
+  }
+  frame(); return { setState: s => { mode = MODES[s] || MODES.off }, destroy: () => { alive = false; cancelAnimationFrame(raf); removeEventListener('resize', resize); if (ro) ro.disconnect() } }
+}
+
+
+/* =====================================================================
+ * El HUD de Jarvis, con lo que el dueño necesita ver de su pauta.
+ * Especificación: docs/product/propuesta-valor-y-precios.md, sección 4.
+ * En 5 segundos, tres cifras contra la semana anterior; en 30, dónde rinde
+ * la plata, seis números, qué hice, qué falta aprobar y las alertas.
+ * Datos de ejemplo de la semana 3 de un restaurante de ejemplo; no son reales.
+ * ===================================================================== */
+const D = {
+  brand: 'SABOR AMAZÓNICO', operator: 'ANA', week: 'SEMANA 3',
+  top: [
+    { label: 'Vendiste con anuncios', value: 'S/ 3.834', delta: '↑ S/ 1.078 vs. semana pasada', good: true },
+    { label: 'Por cada sol vendiste', value: 'S/ 13,04', delta: '↑ antes S/ 10,52', good: true },
+    { label: 'Te quedó tras la publicidad', value: 'S/ 1.160', delta: '↑ S/ 375 vs. semana pasada', good: true },
+  ],
+  month: { spent: 882, cap: 1500 },
+  days: { now: [8, 7, 9, 14, 12, 13, 8], prev: [6, 5, 7, 10, 9, 10, 6] },
+  channels: [
+    { name: 'Meta → WhatsApp', spent: 'S/ 210', orders: 52, cpo: 'S/ 2.808', rec: 'S/ 13,40 por cada sol. Tu mejor canal.' },
+    { name: 'Google búsqueda', spent: 'S/ 84', orders: 19, cpo: 'S/ 1.026', rec: 'S/ 12,20 por cada sol. Subir de a poco.' },
+    { name: 'TikTok', spent: 'S/ 0', orders: 0, cpo: '—', rec: 'Sin probar. Propuesta abajo.' },
+  ],
+  six: [
+    ['Gastaste', 'S/ 294', 'antes S/ 262'],
+    ['Te escribieron', '388 personas', 'antes 331'],
+    ['Terminaron en venta', '18 de cada 100 chats', 'antes 16'],
+    ['Cada chat te costó', 'S/ 0,76', 'antes S/ 0,79'],
+    ['Venta promedio', 'S/ 54', 'antes S/ 52'],
+    ['Volvieron a pedir', '14 de 71', 'antes 8 de 53'],
+  ],
+  alerts: [
+    { level: 'warn', title: 'CHATS SIN RESPONDER', detail: 'Ayer 6 chats de la cena esperaron más de 15 minutos y 4 no compraron: S/ 216 que se perdieron. El problema no son los anuncios.' },
+    { level: 'warn', title: 'VIDEO CANSADO', detail: 'El video del combo lleva 18 días: cada chat cuesta 40 % más que en la semana 1.' },
+  ],
+  done: [
+    { id: 'a1', when: 'lun 16', what: 'Pausé el anuncio del juane de sábado al mediodía', why: 'Vendía S/ 6 por cada sol. Desde entonces vendes S/ 13 por cada sol.', undo: true },
+    { id: 'a2', when: 'jue 12', what: 'Moví S/ 5 diarios del público de 18 a 24 años al de 25 a 44', why: 'El segundo pide el doble.', undo: true },
+    { id: 'a3', when: 'mar 10', what: 'Terminó el aprendizaje de Meta', why: 'Desde aquí sí se ajusta.', undo: false },
+  ],
+  decisions: [
+    { id: 'd2', title: 'Pasar S/ 10 diarios del almuerzo a la cena', why: 'La cena trae 3 de cada 4 ventas.', gain: '+S/ 400 de venta a la semana', conf: 'alta', cost: 'Mismo tope. Lo deshaces con un toque.' },
+    { id: 'd1', title: 'Subir solo el jueves a S/ 50', why: 'Los jueves se vende el doble en la cena.', gain: '+S/ 320 de venta ese día', conf: 'media', cost: 'S/ 20 más ese día. Sale de tu tope.' },
+    { id: 'd3', title: 'Grabar un video nuevo del combo y probar TikTok', why: 'El video actual se cansó.', gain: 'En 2 semanas sabremos si TikTok vende', conf: 'baja', cost: 'S/ 20 al día en TikTok por 2 semanas. Sale de tu tope.' },
+  ],
+  voice: [
+    'Buenos días, Ana. Esta semana vendiste tres mil ochocientos treinta y cuatro soles con anuncios, mil setenta y ocho más que la anterior. Por cada sol que pusiste vendiste trece. Después de pagar la publicidad te quedaron mil ciento sesenta soles. Una alerta: ayer seis chats de la cena esperaron más de quince minutos. Y tres cosas por aprobar.',
+    'Primera, la más segura: la cena trae tres de cada cuatro ventas. Paso diez soles diarios del almuerzo a la cena, mismo tope. Estimo cuatrocientos soles más de venta a la semana. ¿Lo hago?',
+    'Segunda: los jueves se vende el doble en la cena. Propongo subir solo el jueves a cincuenta soles. Sale de tu tope, así que decides tú.',
+    'Tercera, la menos segura: el video del combo se cansó. Con veinte segundos nuevos probamos TikTok dos semanas. ¿Quién lo graba?',
+  ],
+}
+const BOOT_STEPS = ['cargando núcleo visual…', 'leyendo tus campañas…', 'sumando las ventas de la semana…', 'preparando tus decisiones…']
+
+/* La guía: un paso por zona de la pantalla, en el orden en que se lee.
+ * Arranca sola la primera vez y queda siempre en GUÍAME y en el «?» de cada
+ * panel. Los pasos cuya zona no se ve (pantalla angosta) se saltan. */
+const TOUR = [
+  { target: 'head-metrics', title: 'LO ÚNICO QUE TIENES QUE MIRAR', text: 'Arriba, tres cifras: cuánto vendiste con anuncios, cuánto vendiste por cada sol y cuánto te quedó después de pagar la publicidad. Verde quiere decir mejor que la semana pasada.' },
+  { target: 'p-plata', title: 'TU PLATA', text: 'Cuánto llevas gastado del tope que tú pusiste. Nunca lo paso sin tu OK. Abajo, tus ventas de cada día contra la semana anterior.' },
+  { target: 'p-canales', title: 'DÓNDE RINDE', text: 'Cuánto vendió cada plataforma por cada sol que le pusiste. La barra más larga es la que más vende. Ahí muevo la plata.' },
+  { target: 'p-alertas', title: 'ALERTAS', text: 'Lo que te está haciendo perder ventas y por qué. Ámbar es para mirar hoy; rojo, para actuar ya.' },
+  { target: 'core-col', title: 'YO, EVO', text: 'Toca ESCUCHAR EL RESUMEN y te cuento la semana en un minuto, con voz. También me puedes escribir lo que pase en el local.' },
+  { target: 'p-semana', title: 'LA SEMANA', text: 'Seis números contra la semana anterior. Si quieres ver algo más, pídemelo como tablero.' },
+  { target: 'p-hice', title: 'LO QUE HICE', text: 'Lo que cambié por mi cuenta dentro de tu tope, siempre con el motivo. Si no te gusta, DESHACER y vuelve a como estaba.' },
+  { target: 'p-aprobar', title: 'POR APROBAR', text: 'Lo que necesita tu OK: cuánto venderías, qué tan seguro estoy y cuánto cuesta.' },
+  { target: 'btn-pause', title: 'EL FRENO', text: 'Si algo sale mal, PAUSAR TODO detiene todos los anuncios al instante. No se gasta un sol más.' },
+  { target: 'btn-boards', title: 'TABLEROS', text: 'Pregúntame lo que quieras de tus ventas, por ejemplo «¿qué plato se vende más?». Armo el gráfico, te digo qué significa y qué haría.' },
+  { target: 'btn-guide', title: 'ESTA GUÍA', text: 'Siempre está aquí. Tócala, o el «?» de cualquier panel, cuando algo no quede claro. También puedes escribirme «explícame».' },
+]
+
+/* Tableros de ejemplo. Cada uno responde una pregunta con datos que Evo ya
+ * tiene (Meta, Google, TikTok y las ventas registradas), cierra con una
+ * conclusión, qué haría y cuánta confianza tiene. Nunca inventa un número:
+ * si no tiene el dato, lo dice. */
+const BOARDS = [
+  { id: 'platos', match: /(plato|producto|carta|juane|vend.*más|más vend)/, q: '¿Qué plato se vende más con anuncios?',
+    insight: <>El <b>juane</b> trae <b>37 %</b> de lo que vendes con anuncios, pero su anuncio recibe solo <b>22 %</b> de la plata.</>,
+    unit: 'vendido', legend: ['vendido con anuncios', 'parte de la plata'],
+    rows: [['Juane con combo', 1420, 22], ['Patarashca de doncella', 1080, 31], ['Tacacho con cecina', 760, 19], ['Ceviche amazónico', 574, 28]],
+    todo: 'Pasar S/ 5 diarios del anuncio del ceviche al del juane. Mismo tope.', conf: 'media', src: 'Meta + Google + ventas que registraste · 16 al 22 de noviembre' },
+  { id: 'horas', match: /(hora|franja|almuerzo|cena|noche|tarde|día|dia)/, q: '¿A qué hora rinde más la plata?',
+    insight: <>En la <b>cena</b> vendes <b>S/ 17,80</b> por cada sol; en el almuerzo, S/ 7,10. La cena ya trae 3 de cada 4 ventas.</>,
+    unit: 'por sol', legend: ['vendido por cada sol', 'parte de la plata'],
+    rows: [['Almuerzo 12–15 h', 7.1, 34], ['Tarde 15–19 h', 7.7, 11], ['Cena 19–23 h', 17.8, 55]],
+    todo: 'Pasar S/ 10 diarios del almuerzo a la cena. Ya está en POR APROBAR.', conf: 'alta', src: 'Meta + Google + ventas que registraste · 16 al 22 de noviembre' },
+  { id: 'clientes', match: /(client|nuevo|vuelv|recompr|repit|fiel)/, q: '¿Cuánto me compran los que vuelven?',
+    insight: <>Los que vuelven gastan <b>S/ 62</b> por pedido contra S/ 51 de los nuevos, y casi no cuestan anuncio. <b>57</b> clientes pidieron una sola vez.</>,
+    unit: 'vendido', legend: ['vendido', 'parte de la plata'],
+    rows: [['Clientes nuevos · 57', 2690, 91], ['Volvieron · 14', 1144, 9]],
+    todo: 'Mandar un mensaje de recompra a los 57 que pidieron una vez. Cuesta unos S/ 15.', conf: 'media', src: 'Ventas que registraste + chats de WhatsApp · últimos 30 días' },
+]
+const BUILD_STEPS = ['leyendo Meta, Google y TikTok…', 'cruzando con tus ventas…', 'armando el gráfico…', 'escribiendo qué haría…']
+const fmtVal = (v, unit) => unit === 'por sol' ? `S/ ${v.toFixed(2).replace('.', ',')}` : `S/ ${String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`
+
+function MicIcon({ size = 16 }) {
+  return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9.2 5.5a2.8 2.8 0 0 1 5.6 0V11a2.8 2.8 0 0 1-5.6 0z" fill="currentColor" fillOpacity=".2" /><path d="M6 11a6 6 0 0 0 12 0" /><path d="M12 17v4" /><path d="M8.5 21h7" /></svg>
+}
+function Panel({ id, name, tag, className = '', bodyClass = '', onHelp, children }) {
+  return <section id={id} className={`panel ${className}`} aria-labelledby={`${id}-title`}><div className="panel-head"><h2 className="ph-title" id={`${id}-title`}>EVO <i>//</i> <b>{name}</b></h2><span className="ph-tag">{tag}</span>{onHelp && <button type="button" className="ph-help" aria-label={`Qué es ${name.toLowerCase()}`} onClick={() => onHelp(id)}>?</button>}<span className="ph-dots" aria-hidden="true"><i /><i /></span></div><div className={`panel-body ${bodyClass}`}>{children}</div></section>
+}
+
+const visible = id => { const el = document.getElementById(id); if (!el) return null; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? r : null }
+
+function Tour({ start, onClose }) {
+  const steps = useRef(TOUR.filter(s => visible(s.target))).current
+  const [i, setI] = useState(Math.max(0, steps.findIndex(s => s.target === start)))
+  const [rect, setRect] = useState(null)
+  const s = steps[i]
+  useEffect(() => {
+    const measure = () => setRect(s && visible(s.target))
+    const el = s && document.getElementById(s.target)
+    if (el) el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    measure(); const t = setTimeout(measure, 450)
+    addEventListener('resize', measure); addEventListener('scroll', measure, true)
+    return () => { clearTimeout(t); removeEventListener('resize', measure); removeEventListener('scroll', measure, true) }
+  }, [i])
+  useEffect(() => { const k = e => { if (e.key === 'Escape') onClose(); if (e.key === 'ArrowRight' && i < steps.length - 1) setI(i + 1); if (e.key === 'ArrowLeft' && i > 0) setI(i - 1) }; addEventListener('keydown', k); return () => removeEventListener('keydown', k) }, [i])
+  if (!s || !rect) return null
+  const pad = 6, W = innerWidth, H = innerHeight, cw = Math.min(340, W - 32)
+  const below = rect.bottom + 190 < H, right = rect.right + cw + 24 < W
+  const side = rect.height > H * .5
+  const top = side ? Math.min(Math.max(16, rect.top), H - 220) : below ? rect.bottom + 14 : Math.max(16, rect.top - 14 - 190)
+  const left = side ? (right ? rect.right + 14 : Math.max(16, rect.left - cw - 14)) : Math.min(Math.max(16, rect.left), W - cw - 16)
+  return <div className="tour" role="dialog" aria-label="Guía de Evo">
+    <div className="tour-hole" style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }} />
+    <div className="tour-card" style={{ top, left }} aria-live="polite">
+      <div className="tour-dots" aria-hidden="true">{steps.map((_, j) => <i key={j} className={j <= i ? 'on' : ''} />)}</div>
+      <div className="tc-step"><span>GUÍA · {i + 1} DE {steps.length}</span><span>ESC PARA SALIR</span></div>
+      <h3>{s.title}</h3><p>{s.text}</p>
+      <div className="tc-actions"><button type="button" className="mini-btn" onClick={onClose}>SALIR</button><span className="grow" />{i > 0 && <button type="button" className="mini-btn" onClick={() => setI(i - 1)}>ATRÁS</button>}<button type="button" className="mini-btn ok" onClick={() => i < steps.length - 1 ? setI(i + 1) : onClose()}>{i < steps.length - 1 ? 'SIGUIENTE' : 'LISTO'}</button></div>
+    </div>
+  </div>
+}
+
+function BoardCard({ b, saved, onSave, onReview }) {
+  const [grow, setGrow] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setGrow(true), 60); return () => clearTimeout(t) }, [b.id])
+  const max = Math.max(...b.rows.map(r => r[1]))
+  return <div className="board-card">
+    <div className="board-q">» {b.q}</div>
+    <div className="board-insight">{b.insight}</div>
+    <div className="bchart">{b.rows.map(([k, v, share]) => <React.Fragment key={k}><span className="bl">{k}</span><span className="bt"><i style={{ width: grow ? `${v / max * 100}%` : 0 }} /><u style={{ width: grow ? `${share}%` : 0 }} /></span><span className="bv">{fmtVal(v, b.unit)}</span></React.Fragment>)}</div>
+    <div className="board-legend"><span>{b.legend[0]}</span><span className="amb">{b.legend[1]}</span></div>
+    <div className="board-do"><b>QUÉ HARÍA</b>{b.todo}</div>
+    <div className="conf" style={{ marginBottom: 6 }}>CONFIANZA <b className={b.conf}>{b.conf.toUpperCase()}</b></div>
+    <div className="board-src">FUENTE · {b.src}</div>
+    <button type="button" className={`mini-btn ${saved ? 'ok' : ''}`} disabled={saved} onClick={onSave}>{saved ? '✓ GUARDADO EN MIS TABLEROS' : 'GUARDAR EN MIS TABLEROS'}</button>
+    <button type="button" className="mini-btn" onClick={onReview}>LLEVAR A LA REVISIÓN DEL LUNES</button>
+  </div>
+}
+
+function Boards({ initial, saved, onSave, onClose, say }) {
+  const [board, setBoard] = useState(null)
+  const [miss, setMiss] = useState('')
+  const [built, setBuilt] = useState(-1)
+  const build = text => {
+    const b = BOARDS.find(x => x.match.test(text.toLowerCase()))
+    setBoard(null); setMiss('')
+    if (!b) { setBuilt(-1); setMiss(`«${text}»: con tus datos de hoy no puedo responderlo bien. Puedo decirte qué plato, a qué hora y qué clientes venden más. No invento números.`); return }
+    setBuilt(0); BUILD_STEPS.forEach((_, j) => setTimeout(() => { setBuilt(j + 1); if (j === BUILD_STEPS.length - 1) setBoard(b) }, 450 * (j + 1)))
+  }
+  useEffect(() => { if (initial) build(initial) }, [])
+  return <div className="boards" role="dialog" aria-label="Tableros">
+    <div className="boards-head"><span>EVO // TABLEROS</span><span className="grow" /><button type="button" className="stage-close" style={{ position: 'static' }} onClick={onClose}>✕ CERRAR</button></div>
+    <div className="boards-body">
+      <CommandInput label="boards" placeholder="pregúntale a Evo: ¿qué plato se vende más?" onSubmit={build} />
+      {!board && built < 0 && <><h4>PREGÚNTALE, POR EJEMPLO</h4>{BOARDS.map(b => <button type="button" key={b.id} className="chip" onClick={() => build(b.q)}>{b.q}</button>)}</>}
+      {miss && <div className="board-do" style={{ borderColor: 'var(--amber)' }}><b style={{ color: 'var(--amber)' }}>NO TENGO ESE DATO</b>{miss}</div>}
+      {built >= 0 && !board && <div className="building">{BUILD_STEPS.map((s, j) => <div key={s} className={j < built ? 'done' : ''}>{s}</div>)}</div>}
+      {board && <BoardCard b={board} saved={saved.some(x => x.id === board.id)} onSave={() => onSave(board)} onReview={() => { onSave(board); say(`✓ «${board.q}» va a la revisión del lunes`) }} />}
+      <h4>MIS TABLEROS · {saved.length}</h4>
+      {saved.length === 0 && <div className="board-src">Todavía ninguno. Los que guardes se actualizan solos cada mañana.</div>}
+      {saved.map(b => <div className="saved-row" key={b.id} role="button" tabIndex={0} onClick={() => { setMiss(''); setBuilt(-1); setBoard(b) }} onKeyDown={e => e.key === 'Enter' && setBoard(b)}><span className="grow">{b.q}</span><em>SE ACTUALIZA CADA MAÑANA</em></div>)}
+      {board && <><h4>OTRAS PREGUNTAS</h4>{BOARDS.filter(b => b.id !== board.id).map(b => <button type="button" key={b.id} className="chip" onClick={() => build(b.q)}>{b.q}</button>)}</>}
+    </div>
+  </div>
+}
+function CommandInput({ disabled, placeholder, onSubmit, label }) {
+  const [text, setText] = useState('')
+  return <form className="t-input" onSubmit={e => { e.preventDefault(); const v = text.trim(); if (!v || disabled) return; onSubmit(v); setText('') }}><span aria-hidden="true">&gt;</span><label className="sr-only" htmlFor={`${label}-input`}>Cuéntale algo a Evo</label><input id={`${label}-input`} value={text} maxLength={400} disabled={disabled} placeholder={placeholder} autoComplete="off" onChange={e => setText(e.target.value)} /></form>
+}
+function classify(text) {
+  const t = text.toLowerCase()
+  if (/(no puedo|no me deja|error|mal el|está mal|equivocad|se cayó)/.test(t)) return 'Lo reviso ahora mismo. Si es algo del anuncio, lo corrijo hoy.'
+  if (/(anunci|promo|campaña|lancemos|hagamos|quiero|descuento|precio|sub)/.test(t)) return 'Anotado. Si cabe en tu tope lo hago hoy; si cuesta plata nueva, te lo propongo con números.'
+  return 'Anotado. Pauso el anuncio de ese plato hoy mismo y te lo confirmo mañana a las 9:00.'
+}
+const maxDay = Math.max(...D.days.now, ...D.days.prev)
+
+function App() {
+  const orbCanvas = useRef(null), orb = useRef(null)
+  const [bootDone, setBootDone] = useState([false, false, false, false])
+  const [activated, setActivated] = useState(false)
+  const [voice, setVoice] = useState('off')
+  const [paused, setPaused] = useState(false)
+  const [lines, setLines] = useState([])
+  const [log, setLog] = useState(D.done)
+  const [undone, setUndone] = useState({})
+  const [step, setStep] = useState(-1)
+  const [shown, setShown] = useState('')
+  const [pending, setPending] = useState(null)
+  const [resolved, setResolved] = useState({})
+  const [stage, setStage] = useState(null)
+  const [tour, setTour] = useState(null)
+  const [boards, setBoards] = useState(null)
+  const [saved, setSaved] = useState([])
+  const bootShown = Math.round(bootDone.filter(Boolean).length / BOOT_STEPS.length * 100)
+  const bootReady = bootDone.every(Boolean)
+
+  useEffect(() => { BOOT_STEPS.forEach((_, i) => setTimeout(() => setBootDone(d => d.map((x, j) => j <= i ? true : x)), 420 * (i + 1))) }, [])
+  useEffect(() => { if (!orbCanvas.current) return; orb.current = createOrb(orbCanvas.current); return () => orb.current && orb.current.destroy() }, [])
+  useEffect(() => { orb.current && orb.current.setState(voice === 'off' ? 'off' : voice) }, [voice])
+
+  const say = (text, err) => setLines(l => [...l.slice(-3), { id: Date.now() + Math.random(), text, err }])
+  const note = (what, why) => setLog(l => [{ id: 'n' + Date.now(), when: 'hoy', what, why, undo: false }, ...l])
+  const activate = () => {
+    if (activated) return
+    setActivated(true)
+    let seen = false
+    try { seen = localStorage.getItem('evo-guia-vista') === '1'; localStorage.setItem('evo-guia-vista', '1') } catch (e) {}
+    if (!seen) setTimeout(() => setTour(TOUR[0].target), 700)
+  }
+  const help = id => { setBoards(null); setTour(id) }
+  const openBoards = initial => { setTour(null); setBoards({ initial }) }
+  const saveBoard = b => setSaved(l => l.some(x => x.id === b.id) ? l : [...l, b])
+
+  useEffect(() => {
+    if (step < 0) return
+    const text = D.voice[step]; let i = 0; setShown(''); setVoice('speaking'); setPending(null)
+    const t = setInterval(() => { i += 3; setShown(text.slice(0, i)); if (i >= text.length) { clearInterval(t); setVoice('listening'); if (step >= 1) setPending(D.decisions[step - 1]); else setTimeout(() => setStep(1), 1800) } }, 22)
+    return () => clearInterval(t)
+  }, [step])
+  const startReview = () => { if (!activated) { activate(); return } setStep(0) }
+  const next = () => { if (step < D.voice.length - 1) setStep(step + 1); else { setShown('Listo. Te mando el resumen por WhatsApp. Mañana a las 9:00 te cuento el primer día con los cambios.'); setVoice('off'); setStep(-1); setPending(null) } }
+  const decide = (d, ok, fromReview) => {
+    setResolved(r => ({ ...r, [d.id]: ok ? 'ok' : 'no' }))
+    say(ok ? `✓ aprobado: ${d.title}` : `○ queda para después: ${d.title}`)
+    if (ok) note(d.title, 'Lo aprobaste hoy. Te cuento mañana cómo fue.')
+    if (fromReview) { setPending(null); setTimeout(next, 400) }
+  }
+  const undo = a => { setUndone(u => ({ ...u, [a.id]: true })); say(`↺ deshecho: ${a.what}`); note(`Deshice: ${a.what}`, 'Lo pediste tú. Vuelve a como estaba.') }
+  const togglePause = () => { const p = !paused; setPaused(p); say(p ? '■ anuncios en pausa: no se gasta un sol más hasta que digas' : '▶ anuncios reanudados'); note(p ? 'Pausaste todos los anuncios' : 'Reanudaste los anuncios', p ? 'Meta y Google detenidos.' : 'Meta y Google activos.') }
+  const ask = text => {
+    say(`» «${text}»`)
+    const t = text.toLowerCase()
+    if (/(explíca|explica|guía|guia|ayuda|no entiendo|qué es esto|que es esto)/.test(t)) { setTimeout(() => { say('Te muestro la pantalla por partes.'); setTour(TOUR[0].target) }, 400); return }
+    if (/(tablero|muéstrame|muestrame|gráfic|grafic|¿|\?)/.test(t) || BOARDS.some(b => b.match.test(t))) { setTimeout(() => { say('Te armo un tablero con eso.'); openBoards(text) }, 400); return }
+    setTimeout(() => say(classify(text)), 500)
+  }
+  const pendingCount = D.decisions.filter(d => !resolved[d.id]).length
+
+  const coreText = paused ? 'EN PAUSA' : voice === 'speaking' ? 'HABLANDO' : voice === 'listening' ? 'TE ESCUCHO' : 'TRABAJANDO'
+  const cmdText = step >= 0 ? (voice === 'speaking' ? 'EVO HABLA…' : 'ELIGE ARRIBA') : 'ESCUCHAR EL RESUMEN'
+
+  return (
+    <div className="evo-hud" data-voice-state={voice}>
+      <div className="crt" aria-hidden="true"><div className="scanline" /></div>
+
+      <header className="topbar">
+        <div className="brand"><div className="brand-ring"><MicIcon /></div><div><h1 className="brand-name">EVO</h1><p className="brand-sub">{D.brand} · {D.week}</p></div></div>
+        <div className="head-actions">
+          <button type="button" id="btn-guide" className="listen-pill" onClick={() => help(TOUR[0].target)} aria-label="Guíame por la pantalla"><span>?<span className="pl"> GUÍAME</span></span></button>
+          <button type="button" id="btn-boards" className="listen-pill" onClick={() => openBoards()}><span>▦<span className="pl"> TABLEROS</span>{saved.length ? ` · ${saved.length}` : ''}</span></button>
+          <button type="button" id="btn-pause" className={`listen-pill ${paused ? 'muted' : 'stop'}`} onClick={togglePause}><span className="pdot square" aria-hidden="true" /><span>{paused ? 'REANUDAR' : 'PAUSAR TODO'}</span></button>
+          <button type="button" className={`listen-pill state-${voice}`} onClick={startReview}><span className="pdot" aria-hidden="true" /><span>{pendingCount ? `${pendingCount} POR APROBAR` : 'TODO APROBADO'}</span></button>
+          <div className="head-sep" aria-hidden="true" />
+          <div className="operator"><span>{D.operator}</span><div className="avatar" aria-hidden="true" /></div>
+        </div>
+      </header>
+
+      <section className="kpis" id="head-metrics" aria-label="Las tres cifras de la semana">
+        {D.top.map(m => <div className="kpi" key={m.label}><span className="kpi-label">{m.label}</span><span className="kpi-value">{paused && m.label.startsWith('Vendiste') ? 'EN PAUSA' : m.value}</span><span className={`kpi-delta ${m.good ? 'good' : ''}`}>{m.delta}</span></div>)}
+      </section>
+
+      <main className="grid3">
+        <div className="col">
+          <Panel onHelp={help} id="p-plata" name="TU PLATA" tag="NOVIEMBRE">
+            <div className="metric-row"><div><div className="m-label">Gastaste este mes · tope S/ {D.month.cap.toLocaleString('es-PE')}</div><div className="m-big">S/ {D.month.spent}</div></div><svg className="m-icon" viewBox="0 0 40 20" aria-hidden="true"><polyline points="0,10 8,10 12,3 17,17 21,7 25,10 40,10" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg></div>
+            <div className="bar"><div className="bar-fill" style={{ width: `${D.month.spent / D.month.cap * 100}%` }} /></div>
+            <div className="m-label">Ventas por día · esta semana y la anterior</div>
+            <div className="week-bars" aria-hidden="true">{D.days.now.map((n, i) => <div key={i}><i className="prev" style={{ height: `${D.days.prev[i] / maxDay * 100}%` }} /><i style={{ height: `${n / maxDay * 100}%`, opacity: paused ? .3 : 1 }} /></div>)}</div>
+            <div className="days" aria-hidden="true">{['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <span key={i}>{d}</span>)}</div>
+          </Panel>
+          <Panel onHelp={help} id="p-canales" name="DÓNDE RINDE" tag="POR PLATAFORMA" bodyClass="ctx-cards">
+            {D.channels.map(c => <div className="ctx-row" key={c.name}><div className="ctx-top"><span className="ctx-title">{c.name}</span><span className="ctx-value">{c.cpo}</span></div><div className="ctx-detail">vendido · {c.spent} invertido · {c.orders} pedidos</div><div className="rank"><i style={{ width: `${c.orders / 52 * 100}%` }} /></div><div className="rec">{c.rec}</div></div>)}
+          </Panel>
+          <Panel onHelp={help} id="p-alertas" name="ALERTAS" tag={`${D.alerts.length} ÁMBAR · 0 ROJAS`} className="grow" bodyClass="log">
+            {paused && <div className="hap warn"><span className="hap-title">ANUNCIOS EN PAUSA</span><span className="hap-detail">No se gasta nada hasta que los reanudes.</span></div>}
+            {D.alerts.map(a => <div className={`hap ${a.level}`} key={a.title}><span className="hap-title">{a.title}</span><span className="hap-detail">{a.detail}</span></div>)}
+          </Panel>
+        </div>
+
+        <div className="core-col" id="core-col">
+          <span className="corner tl" aria-hidden="true" /><span className="corner tr" aria-hidden="true" /><span className="corner bl" aria-hidden="true" /><span className="corner br" aria-hidden="true" />
+          <div className="core-stage" aria-hidden="true">
+            <canvas className="orb3d" ref={orbCanvas} />
+            <div className="hud-ring r-dash" /><div className="hud-ring r-solid"><span className="tick t-top" /><span className="tick t-bot" /></div><div className="hud-ring r-inner" />
+            <div className="cross x1" /><div className="cross x2" /><div className="cross x3" /><div className="blip b1" /><div className="blip b2" />
+            <div className="core"><span className="core-state">EVO<br />{coreText}</span></div>
+          </div>
+          <div className="core-dock">
+            {shown && <p className="evo-line" aria-live="polite"><b>EVO</b>{shown}</p>}
+        {pending && activated && <div className="approvals" aria-live="polite"><div className="approval"><div className="approval-title">Necesita tu OK</div><pre>{`${pending.title}\n${pending.why} Estimo ${pending.gain}.\nConfianza ${pending.conf}. ${pending.cost}`}</pre><div className="approval-actions"><button type="button" className="approve" onClick={() => decide(pending, true, true)}>✅ Aprobar</button><button type="button" className="deny" onClick={() => decide(pending, false, true)}>○ Ahora no</button><span className="approval-note">Nada sube de presupuesto sin tu OK.</span></div></div></div>}
+            <div className="vu" aria-hidden="true">{Array.from({ length: 16 }, (_, i) => <i key={i} style={{ height: voice === 'speaking' ? `${20 + ((i * 37) % 70)}%` : '12%' }} />)}</div>
+            <button type="button" className="cmd-pill" aria-live="polite" onClick={startReview}><MicIcon size={13} /><span className="cmd-label">{cmdText}</span></button>
+            <div className="dock-input terminal"><CommandInput label="dock" disabled={!activated} placeholder="cuéntale algo a Evo: se acabó el juane" onSubmit={ask} /></div>
+          </div>
+        </div>
+
+        <div className="col">
+          <Panel onHelp={help} id="p-semana" name="LA SEMANA" tag="CONTRA LA ANTERIOR">
+            {D.six.map(([k, v, prev]) => <div className="kpi-row" key={k}><span>{k}</span><span><b>{v}</b><em>{prev}</em></span></div>)}
+            <button type="button" className="mini-btn" onClick={() => openBoards()}>▦ PEDIR UN TABLERO</button>
+          </Panel>
+          <Panel onHelp={help} id="p-hice" name="LO QUE HICE" tag="CON SU MOTIVO" className="grow" bodyClass="log">
+            {log.map(a => <div className="hap" key={a.id}><span className="hap-time">[{a.when}]</span><span className="hap-title">{undone[a.id] ? '↺ ' : ''}{a.what}</span><span className="hap-detail">{a.why}</span>{a.undo && !undone[a.id] && <button type="button" className="mini-btn" onClick={() => undo(a)}>DESHACER</button>}</div>)}
+          </Panel>
+          <Panel onHelp={help} id="p-aprobar" name="POR APROBAR" tag={`${pendingCount} PENDIENTES`}>
+            <div>
+              {D.decisions.map(d => <div className="dec" key={d.id}><b>{resolved[d.id] === 'ok' ? '✓ ' : resolved[d.id] === 'no' ? '○ ' : ''}{d.title}</b>{d.why} {d.gain}.<div className="conf">CONFIANZA <b className={d.conf}>{d.conf.toUpperCase()}</b> · {d.cost}</div>{!resolved[d.id] && <div><button type="button" className="mini-btn ok" onClick={() => decide(d, true)}>APROBAR</button><button type="button" className="mini-btn" onClick={() => decide(d, false)}>AHORA NO</button></div>}</div>)}
+            </div>
+            <div className="terminal" aria-live="polite">
+              {lines.map(l => <div key={l.id} className={`t-line ${l.err ? 'err' : ''}`}>{l.text}</div>)}
+              <CommandInput label="term" disabled={!activated} placeholder="cuéntale algo o pregúntale a Evo" onSubmit={ask} />
+            </div>
+          </Panel>
+        </div>
+      </main>
+
+      <footer className="botbar">
+        <div className="foot-l"><span className={`foot-chip ${paused ? '' : 'on'}`}>{paused ? '■ ANUNCIOS EN PAUSA' : '● ANUNCIOS ACTIVOS'}</span><span className="foot-chip">META + GOOGLE</span><span className="foot-chip">NADA SUBE DE PRESUPUESTO SIN TU OK</span><span className="foot-chip">GARANTÍA: CLARIDAD Y 3× TU PAUTA A LOS 60 DÍAS</span></div>
+        <div className="foot-r"><span>SOPORTE · EQUIPO EVO · MENOS DE 8 H</span></div>
+      </footer>
+
+      {stage && <div className="stage-overlay" role="dialog" aria-label={stage.title}><div className="stage-body"><h3>{stage.title}</h3>{stage.body.map(([k, v]) => <p key={k}><strong>{k}</strong><br />{v}</p>)}<div className="note">En la app real cada línea abre su detalle. Nunca verás impresiones, alcance ni clics sueltos.</div></div><div className="stage-title">{stage.title}</div><button type="button" className="stage-close" onClick={() => setStage(null)}>✕ CERRAR</button></div>}
+
+      {boards && <Boards initial={boards.initial} saved={saved} onSave={saveBoard} onClose={() => setBoards(null)} say={say} />}
+      {tour && <Tour key={tour} start={tour} onClose={() => setTour(null)} />}
+
+
+      <div className={`activate ${activated ? 'gone' : ''}`} onClick={activate} role="button" tabIndex={activated ? -1 : 0} aria-label="Activar Evo" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate() } }}>
+        <div className="boot">
+          <div className="boot-head"><span>INICIALIZANDO<span className="boot-dots" /></span><span className="boot-pct">{bootShown}%</span></div>
+          <div className="boot-bar"><div className="boot-fill" style={{ width: `${bootShown}%` }} /></div>
+          <div className="boot-cols"><div className="boot-log">{BOOT_STEPS.map((s, i) => <div key={s} className={bootDone[i] ? 'done' : ''}>{s}</div>)}</div><div className="boot-tags"><div>{D.operator}</div><div>EVO</div><div>LIMA, PERÚ</div></div></div>
+          {bootReady && <div className="boot-ready">TOCA PARA ENTRAR</div>}
+          {bootReady && <div className="boot-note">DEMOSTRACIÓN CON DATOS DE EJEMPLO · LA VOZ REAL VIVE EN LA APP</div>}
+        </div>
+        <div className="boot-credit">{D.brand}</div>
+      </div>
+    </div>
+  )
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+</script>
+
+</body></html>
