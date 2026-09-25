@@ -2,7 +2,7 @@
 <title>Evo HUD</title>
 <style>
 html, body { margin:0; height:100%; background:#00050a; color:#ccffff; }
-/* HUD de voz de Evo. Clon del HUD de Jarvis (jarvis/ui/static/style.css):
+/* Sala Evo: HUD de voz de Evo.
    mismos tokens, mismas medidas y animaciones. Todo va acotado a `.evo-hud`
    para no tocar el resto de la SPA, que sigue con su tema claro. Los
    keyframes y los anillos llevan prefijo `hud-` porque Tailwind ya define
@@ -645,7 +645,7 @@ function createOrb(canvas) {
 
 
 /* =====================================================================
- * El HUD de Jarvis, con lo que el dueño necesita ver de su pauta.
+ * La Sala Evo, con lo que el dueño necesita ver de su pauta.
  * Especificación: docs/product/propuesta-valor-y-precios.md, sección 4.
  * En 5 segundos, tres cifras contra la semana anterior; en 30, dónde rinde
  * la plata, seis números, qué hice, qué falta aprobar y las alertas.
@@ -654,16 +654,16 @@ function createOrb(canvas) {
 const D = {
   brand: 'SABOR AMAZÓNICO', operator: 'ANA', week: 'SEMANA 3',
   top: [
-    { label: 'Vendiste con anuncios', value: 'S/ 3.834', delta: '↑ S/ 1.078 vs. semana pasada', good: true },
-    { label: 'Por cada sol vendiste', value: 'S/ 13,04', delta: '↑ antes S/ 10,52', good: true },
-    { label: 'Te quedó tras la publicidad', value: 'S/ 1.160', delta: '↑ S/ 375 vs. semana pasada', good: true },
+    { label: 'Ventas atribuidas a anuncios', value: 'S/ 3.834', delta: '↑ S/ 1.078 vs. semana pasada', good: true },
+    { label: 'Por cada sol en anuncios', value: 'S/ 13,04', delta: '↑ antes S/ 10,52', good: true },
+    { label: 'Ventas menos anuncios (no es ganancia)', value: 'S/ 3.540', delta: '↑ S/ 1.046 vs. semana pasada', good: true },
   ],
   month: { spent: 882, cap: 1500 },
   days: { now: [8, 7, 9, 14, 12, 13, 8], prev: [6, 5, 7, 10, 9, 10, 6] },
   channels: [
     { name: 'Meta → WhatsApp', spent: 'S/ 210', orders: 52, cpo: 'S/ 2.808', rec: 'S/ 13,40 por cada sol. Tu mejor canal.' },
-    { name: 'Google búsqueda', spent: 'S/ 84', orders: 19, cpo: 'S/ 1.026', rec: 'S/ 12,20 por cada sol. Subir de a poco.' },
-    { name: 'TikTok', spent: 'S/ 0', orders: 0, cpo: '—', rec: 'Sin probar. Propuesta abajo.' },
+    { name: 'Google búsqueda (ejemplo)', spent: 'S/ 84', orders: 19, cpo: 'S/ 1.026', rec: 'Ejemplo: Google está en desarrollo.' },
+    { name: 'TikTok', spent: 'S/ 0', orders: 0, cpo: '—', rec: 'En desarrollo. Propuesta abajo.' },
   ],
   six: [
     ['Gastaste', 'S/ 294', 'antes S/ 262'],
@@ -674,22 +674,22 @@ const D = {
     ['Volvieron a pedir', '14 de 71', 'antes 8 de 53'],
   ],
   alerts: [
-    { level: 'warn', title: 'CHATS SIN RESPONDER', detail: 'Ayer 6 chats de la cena esperaron más de 15 minutos y 4 no compraron: S/ 216 que se perdieron. El problema no son los anuncios.' },
+    { level: 'warn', title: 'CHATS SIN RESPONDER', detail: 'Ayer 6 chats de la cena esperaron más de 15 minutos y 4 no compraron. El problema no son los anuncios.' },
     { level: 'warn', title: 'VIDEO CANSADO', detail: 'El video del combo lleva 18 días: cada chat cuesta 40 % más que en la semana 1.' },
   ],
   done: [
-    { id: 'a1', when: 'lun 16', what: 'Pausé el anuncio del juane de sábado al mediodía', why: 'Vendía S/ 6 por cada sol. Desde entonces vendes S/ 13 por cada sol.', undo: true },
-    { id: 'a2', when: 'jue 12', what: 'Moví S/ 5 diarios del público de 18 a 24 años al de 25 a 44', why: 'El segundo pide el doble.', undo: true },
+    { id: 'a1', when: 'lun 16', what: 'Franco pausó el anuncio del juane de sábado al mediodía', why: 'Aprobado por Ana con T-3E8C12. Vendía S/ 6 por cada sol; desde entonces, S/ 13.', undo: false },
+    { id: 'a2', when: 'jue 12', what: 'Franco movió S/ 5 diarios del público de 18 a 24 años al de 25 a 44', why: 'Aprobado por Ana con T-7A21D4. El segundo pide el doble.', undo: false },
     { id: 'a3', when: 'mar 10', what: 'Terminó el aprendizaje de Meta', why: 'Desde aquí sí se ajusta.', undo: false },
   ],
   decisions: [
-    { id: 'd2', title: 'Pasar S/ 10 diarios del almuerzo a la cena', why: 'La cena trae 3 de cada 4 ventas.', gain: '+S/ 400 de venta a la semana', conf: 'alta', cost: 'Mismo tope. Lo deshaces con un toque.' },
-    { id: 'd1', title: 'Subir solo el jueves a S/ 50', why: 'Los jueves se vende el doble en la cena.', gain: '+S/ 320 de venta ese día', conf: 'media', cost: 'S/ 20 más ese día. Sale de tu tope.' },
-    { id: 'd3', title: 'Grabar un video nuevo del combo y probar TikTok', why: 'El video actual se cansó.', gain: 'En 2 semanas sabremos si TikTok vende', conf: 'baja', cost: 'S/ 20 al día en TikTok por 2 semanas. Sale de tu tope.' },
+    { id: 'd2', code: 'T-5B20C9', title: 'Pasar S/ 10 diarios del almuerzo a la cena', why: 'La cena trae 3 de cada 4 ventas.', gain: '+S/ 400 de venta a la semana', conf: 'alta', cost: 'Mismo tope.' },
+    { id: 'd1', code: 'T-81F4A0', title: 'Subir solo el jueves a S/ 50', why: 'Los jueves se vende el doble en la cena.', gain: '+S/ 320 de venta ese día', conf: 'media', cost: 'S/ 20 más ese día. Sale de tu tope.' },
+    { id: 'd3', code: 'T-C39D17', title: 'Grabar un video nuevo del combo y probar TikTok', why: 'El video actual se cansó.', gain: 'En 2 semanas sabremos si TikTok vende', conf: 'baja', cost: 'S/ 20 al día en TikTok por 2 semanas. Sale de tu tope.' },
   ],
   voice: [
-    'Buenos días, Ana. Esta semana vendiste tres mil ochocientos treinta y cuatro soles con anuncios, mil setenta y ocho más que la anterior. Por cada sol que pusiste vendiste trece. Después de pagar la publicidad te quedaron mil ciento sesenta soles. Una alerta: ayer seis chats de la cena esperaron más de quince minutos. Y tres cosas por aprobar.',
-    'Primera, la más segura: la cena trae tres de cada cuatro ventas. Paso diez soles diarios del almuerzo a la cena, mismo tope. Estimo cuatrocientos soles más de venta a la semana. ¿Lo hago?',
+    'Buenos días, Ana. Esta semana las ventas atribuidas a anuncios fueron tres mil ochocientos treinta y cuatro soles, mil setenta y ocho más que la anterior. Por cada sol en anuncios vendiste trece. Descontando solo la publicidad quedan tres mil quinientos cuarenta; no es tu ganancia, faltan tus costos. Una alerta: ayer seis chats de la cena esperaron más de quince minutos. Y tres cosas por aprobar.',
+    'Primera, la más segura: la cena trae tres de cada cuatro ventas. Propongo pasar diez soles diarios del almuerzo a la cena, mismo tope. Estimo cuatrocientos soles más de venta a la semana. Para aprobarla, escribe el código que ves en pantalla.',
     'Segunda: los jueves se vende el doble en la cena. Propongo subir solo el jueves a cincuenta soles. Sale de tu tope, así que decides tú.',
     'Tercera, la menos segura: el video del combo se cansó. Con veinte segundos nuevos probamos TikTok dos semanas. ¿Quién lo graba?',
   ],
@@ -700,16 +700,16 @@ const BOOT_STEPS = ['cargando núcleo visual…', 'leyendo tus campañas…', 's
  * Arranca sola la primera vez y queda siempre en GUÍAME y en el «?» de cada
  * panel. Los pasos cuya zona no se ve (pantalla angosta) se saltan. */
 const TOUR = [
-  { target: 'head-metrics', title: 'LO ÚNICO QUE TIENES QUE MIRAR', text: 'Arriba, tres cifras: cuánto vendiste con anuncios, cuánto vendiste por cada sol y cuánto te quedó después de pagar la publicidad. Verde quiere decir mejor que la semana pasada.' },
+  { target: 'head-metrics', title: 'LO ÚNICO QUE TIENES QUE MIRAR', text: 'Arriba, tres cifras: ventas atribuidas a anuncios, cuánto vendiste por cada sol en anuncios y ventas menos anuncios, que no es tu ganancia. Verde quiere decir mejor que la semana pasada.' },
   { target: 'p-plata', title: 'TU PLATA', text: 'Cuánto llevas gastado del tope que tú pusiste. Nunca lo paso sin tu OK. Abajo, tus ventas de cada día contra la semana anterior.' },
-  { target: 'p-canales', title: 'DÓNDE RINDE', text: 'Cuánto vendió cada plataforma por cada sol que le pusiste. La barra más larga es la que más vende. Ahí muevo la plata.' },
+  { target: 'p-canales', title: 'DÓNDE RINDE', text: 'Cuánto vendió cada plataforma por cada sol que le pusiste. La barra más larga es la que más vende. Ahí propongo mover la plata.' },
   { target: 'p-alertas', title: 'ALERTAS', text: 'Lo que te está haciendo perder ventas y por qué. Ámbar es para mirar hoy; rojo, para actuar ya.' },
   { target: 'core-col', title: 'YO, EVO', text: 'Toca ESCUCHAR EL RESUMEN y te cuento la semana en un minuto, con voz. También me puedes escribir lo que pase en el local.' },
   { target: 'p-semana', title: 'LA SEMANA', text: 'Seis números contra la semana anterior. Si quieres ver algo más, pídemelo como tablero.' },
-  { target: 'p-hice', title: 'LO QUE HICE', text: 'Lo que cambié por mi cuenta dentro de tu tope, siempre con el motivo. Si no te gusta, DESHACER y vuelve a como estaba.' },
-  { target: 'p-aprobar', title: 'POR APROBAR', text: 'Lo que necesita tu OK: cuánto venderías, qué tan seguro estoy y cuánto cuesta.' },
-  { target: 'btn-pause', title: 'EL FRENO', text: 'Si algo sale mal, PAUSAR TODO detiene todos los anuncios al instante. No se gasta un sol más.' },
-  { target: 'btn-boards', title: 'TABLEROS', text: 'Pregúntame lo que quieras de tus ventas, por ejemplo «¿qué plato se vende más?». Armo el gráfico, te digo qué significa y qué haría.' },
+  { target: 'p-hice', title: 'LO QUE SE HIZO', text: 'Lo que se ejecutó en tus anuncios, quién lo hizo y con qué aprobación.' },
+  { target: 'p-aprobar', title: 'POR APROBAR', text: 'Lo que necesita tu OK: cuánto venderías, qué tan seguro estoy y cuánto cuesta. Se aprueba con el código de cada decisión.' },
+  { target: 'btn-pause', title: 'EL FRENO', text: 'Si algo sale mal, PEDIR PAUSA bloquea al instante subir gasto o publicar algo nuevo, y avisa a Franco para pausar lo que está activo.' },
+  { target: 'btn-boards', title: 'TABLEROS', text: 'Próximamente: pregúntame por tus ventas, por ejemplo «¿qué plato se vende más?». Estos tableros son de ejemplo.' },
   { target: 'btn-guide', title: 'ESTA GUÍA', text: 'Siempre está aquí. Tócala, o el «?» de cualquier panel, cuando algo no quede claro. También puedes escribirme «explícame».' },
 ]
 
@@ -722,19 +722,19 @@ const BOARDS = [
     insight: <>El <b>juane</b> trae <b>37 %</b> de lo que vendes con anuncios, pero su anuncio recibe solo <b>22 %</b> de la plata.</>,
     unit: 'vendido', legend: ['vendido con anuncios', 'parte de la plata'],
     rows: [['Juane con combo', 1420, 22], ['Patarashca de doncella', 1080, 31], ['Tacacho con cecina', 760, 19], ['Ceviche amazónico', 574, 28]],
-    todo: 'Pasar S/ 5 diarios del anuncio del ceviche al del juane. Mismo tope.', conf: 'media', src: 'Meta + Google + ventas que registraste · 16 al 22 de noviembre' },
+    todo: 'Pasar S/ 5 diarios del anuncio del ceviche al del juane. Mismo tope.', conf: 'media', src: 'Ejemplo · Meta + ventas que registraste · 16 al 22 de noviembre' },
   { id: 'horas', match: /(hora|franja|almuerzo|cena|noche|tarde|día|dia)/, q: '¿A qué hora rinde más la plata?',
     insight: <>En la <b>cena</b> vendes <b>S/ 17,80</b> por cada sol; en el almuerzo, S/ 7,10. La cena ya trae 3 de cada 4 ventas.</>,
     unit: 'por sol', legend: ['vendido por cada sol', 'parte de la plata'],
     rows: [['Almuerzo 12–15 h', 7.1, 34], ['Tarde 15–19 h', 7.7, 11], ['Cena 19–23 h', 17.8, 55]],
-    todo: 'Pasar S/ 10 diarios del almuerzo a la cena. Ya está en POR APROBAR.', conf: 'alta', src: 'Meta + Google + ventas que registraste · 16 al 22 de noviembre' },
+    todo: 'Pasar S/ 10 diarios del almuerzo a la cena. Ya está en POR APROBAR.', conf: 'alta', src: 'Ejemplo · Meta + ventas que registraste · 16 al 22 de noviembre' },
   { id: 'clientes', match: /(client|nuevo|vuelv|recompr|repit|fiel)/, q: '¿Cuánto me compran los que vuelven?',
     insight: <>Los que vuelven gastan <b>S/ 62</b> por pedido contra S/ 51 de los nuevos, y casi no cuestan anuncio. <b>57</b> clientes pidieron una sola vez.</>,
     unit: 'vendido', legend: ['vendido', 'parte de la plata'],
     rows: [['Clientes nuevos · 57', 2690, 91], ['Volvieron · 14', 1144, 9]],
     todo: 'Mandar un mensaje de recompra a los 57 que pidieron una vez. Cuesta unos S/ 15.', conf: 'media', src: 'Ventas que registraste + chats de WhatsApp · últimos 30 días' },
 ]
-const BUILD_STEPS = ['leyendo Meta, Google y TikTok…', 'cruzando con tus ventas…', 'armando el gráfico…', 'escribiendo qué haría…']
+const BUILD_STEPS = ['leyendo Meta…', 'cruzando con tus ventas…', 'armando el gráfico…', 'escribiendo qué haría…']
 const fmtVal = (v, unit) => unit === 'por sol' ? `S/ ${v.toFixed(2).replace('.', ',')}` : `S/ ${String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`
 
 function MicIcon({ size = 16 }) {
@@ -790,7 +790,7 @@ function BoardCard({ b, saved, onSave, onReview }) {
     <div className="conf" style={{ marginBottom: 6 }}>CONFIANZA <b className={b.conf}>{b.conf.toUpperCase()}</b></div>
     <div className="board-src">FUENTE · {b.src}</div>
     <button type="button" className={`mini-btn ${saved ? 'ok' : ''}`} disabled={saved} onClick={onSave}>{saved ? '✓ GUARDADO EN MIS TABLEROS' : 'GUARDAR EN MIS TABLEROS'}</button>
-    <button type="button" className="mini-btn" onClick={onReview}>LLEVAR A LA REVISIÓN DEL LUNES</button>
+    <button type="button" className="mini-btn" onClick={onReview}>LLEVAR A LA PRÓXIMA REVISIÓN</button>
   </div>
 }
 
@@ -812,9 +812,9 @@ function Boards({ initial, saved, onSave, onClose, say }) {
       {!board && built < 0 && <><h4>PREGÚNTALE, POR EJEMPLO</h4>{BOARDS.map(b => <button type="button" key={b.id} className="chip" onClick={() => build(b.q)}>{b.q}</button>)}</>}
       {miss && <div className="board-do" style={{ borderColor: 'var(--amber)' }}><b style={{ color: 'var(--amber)' }}>NO TENGO ESE DATO</b>{miss}</div>}
       {built >= 0 && !board && <div className="building">{BUILD_STEPS.map((s, j) => <div key={s} className={j < built ? 'done' : ''}>{s}</div>)}</div>}
-      {board && <BoardCard b={board} saved={saved.some(x => x.id === board.id)} onSave={() => onSave(board)} onReview={() => { onSave(board); say(`✓ «${board.q}» va a la revisión del lunes`) }} />}
+      {board && <BoardCard b={board} saved={saved.some(x => x.id === board.id)} onSave={() => onSave(board)} onReview={() => { onSave(board); say(`✓ «${board.q}» va a la próxima revisión`) }} />}
       <h4>MIS TABLEROS · {saved.length}</h4>
-      {saved.length === 0 && <div className="board-src">Todavía ninguno. Los que guardes se actualizan solos cada mañana.</div>}
+      {saved.length === 0 && <div className="board-src">Todavía ninguno. Tableros de ejemplo: próximamente con tus datos.</div>}
       {saved.map(b => <div className="saved-row" key={b.id} role="button" tabIndex={0} onClick={() => { setMiss(''); setBuilt(-1); setBoard(b) }} onKeyDown={e => e.key === 'Enter' && setBoard(b)}><span className="grow">{b.q}</span><em>SE ACTUALIZA CADA MAÑANA</em></div>)}
       {board && <><h4>OTRAS PREGUNTAS</h4>{BOARDS.filter(b => b.id !== board.id).map(b => <button type="button" key={b.id} className="chip" onClick={() => build(b.q)}>{b.q}</button>)}</>}
     </div>
@@ -826,9 +826,9 @@ function CommandInput({ disabled, placeholder, onSubmit, label }) {
 }
 function classify(text) {
   const t = text.toLowerCase()
-  if (/(no puedo|no me deja|error|mal el|está mal|equivocad|se cayó)/.test(t)) return 'Lo reviso ahora mismo. Si es algo del anuncio, lo corrijo hoy.'
-  if (/(anunci|promo|campaña|lancemos|hagamos|quiero|descuento|precio|sub)/.test(t)) return 'Anotado. Si cabe en tu tope lo hago hoy; si cuesta plata nueva, te lo propongo con números.'
-  return 'Anotado. Pauso el anuncio de ese plato hoy mismo y te lo confirmo mañana a las 9:00.'
+  if (/(no puedo|no me deja|error|mal el|está mal|equivocad|se cayó)/.test(t)) return 'Anotado. Franco lo revisa ahora y te confirma aquí.'
+  if (/(anunci|promo|campaña|lancemos|hagamos|quiero|descuento|precio|sub)/.test(t)) return 'Anotado. Si cabe en tu plan, Franco lo hace; si cuesta plata nueva, te lo propongo con números y un código para aprobar.'
+  return 'Anotado. Franco lo revisa y te confirma aquí.'
 }
 const maxDay = Math.max(...D.days.now, ...D.days.prev)
 
@@ -879,12 +879,11 @@ function App() {
   const next = () => { if (step < D.voice.length - 1) setStep(step + 1); else { setShown('Listo. Te mando el resumen por WhatsApp. Mañana a las 9:00 te cuento el primer día con los cambios.'); setVoice('off'); setStep(-1); setPending(null) } }
   const decide = (d, ok, fromReview) => {
     setResolved(r => ({ ...r, [d.id]: ok ? 'ok' : 'no' }))
-    say(ok ? `✓ aprobado: ${d.title}` : `○ queda para después: ${d.title}`)
+    say(ok ? `✓ aprobado con ${d.code}: ${d.title}` : `○ queda para después: ${d.title}`)
     if (ok) note(d.title, 'Lo aprobaste hoy. Te cuento mañana cómo fue.')
     if (fromReview) { setPending(null); setTimeout(next, 400) }
   }
-  const undo = a => { setUndone(u => ({ ...u, [a.id]: true })); say(`↺ deshecho: ${a.what}`); note(`Deshice: ${a.what}`, 'Lo pediste tú. Vuelve a como estaba.') }
-  const togglePause = () => { const p = !paused; setPaused(p); say(p ? '■ anuncios en pausa: no se gasta un sol más hasta que digas' : '▶ anuncios reanudados'); note(p ? 'Pausaste todos los anuncios' : 'Reanudaste los anuncios', p ? 'Meta y Google detenidos.' : 'Meta y Google activos.') }
+  const togglePause = () => { const p = !paused; setPaused(p); say(p ? '■ pausa pedida: no se sube gasto ni se publica nada nuevo; Franco pausa lo activo y te confirma' : '▶ pedido de pausa retirado'); note(p ? 'Pediste pausar todo' : 'Retiraste el pedido de pausa', p ? 'Franco pausa los anuncios activos y te confirma.' : 'Los anuncios siguen como estaban.') }
   const ask = text => {
     say(`» «${text}»`)
     const t = text.toLowerCase()
@@ -906,7 +905,7 @@ function App() {
         <div className="head-actions">
           <button type="button" id="btn-guide" className="listen-pill" onClick={() => help(TOUR[0].target)} aria-label="Guíame por la pantalla"><span>?<span className="pl"> GUÍAME</span></span></button>
           <button type="button" id="btn-boards" className="listen-pill" onClick={() => openBoards()}><span>▦<span className="pl"> TABLEROS</span>{saved.length ? ` · ${saved.length}` : ''}</span></button>
-          <button type="button" id="btn-pause" className={`listen-pill ${paused ? 'muted' : 'stop'}`} onClick={togglePause}><span className="pdot square" aria-hidden="true" /><span>{paused ? 'REANUDAR' : 'PAUSAR TODO'}</span></button>
+          <button type="button" id="btn-pause" className={`listen-pill ${paused ? 'muted' : 'stop'}`} onClick={togglePause}><span className="pdot square" aria-hidden="true" /><span>{paused ? 'RETIRAR PAUSA' : 'PEDIR PAUSA'}</span></button>
           <button type="button" className={`listen-pill state-${voice}`} onClick={startReview}><span className="pdot" aria-hidden="true" /><span>{pendingCount ? `${pendingCount} POR APROBAR` : 'TODO APROBADO'}</span></button>
           <div className="head-sep" aria-hidden="true" />
           <div className="operator"><span>{D.operator}</span><div className="avatar" aria-hidden="true" /></div>
@@ -914,7 +913,7 @@ function App() {
       </header>
 
       <section className="kpis" id="head-metrics" aria-label="Las tres cifras de la semana">
-        {D.top.map(m => <div className="kpi" key={m.label}><span className="kpi-label">{m.label}</span><span className="kpi-value">{paused && m.label.startsWith('Vendiste') ? 'EN PAUSA' : m.value}</span><span className={`kpi-delta ${m.good ? 'good' : ''}`}>{m.delta}</span></div>)}
+        {D.top.map(m => <div className="kpi" key={m.label}><span className="kpi-label">{m.label}</span><span className="kpi-value">{paused && m.label.startsWith('Ventas atribuidas') ? 'EN PAUSA' : m.value}</span><span className={`kpi-delta ${m.good ? 'good' : ''}`}>{m.delta}</span></div>)}
       </section>
 
       <main className="grid3">
@@ -945,7 +944,7 @@ function App() {
           </div>
           <div className="core-dock">
             {shown && <p className="evo-line" aria-live="polite"><b>EVO</b>{shown}</p>}
-        {pending && activated && <div className="approvals" aria-live="polite"><div className="approval"><div className="approval-title">Necesita tu OK</div><pre>{`${pending.title}\n${pending.why} Estimo ${pending.gain}.\nConfianza ${pending.conf}. ${pending.cost}`}</pre><div className="approval-actions"><button type="button" className="approve" onClick={() => decide(pending, true, true)}>✅ Aprobar</button><button type="button" className="deny" onClick={() => decide(pending, false, true)}>○ Ahora no</button><span className="approval-note">Nada sube de presupuesto sin tu OK.</span></div></div></div>}
+        {pending && activated && <div className="approvals" aria-live="polite"><div className="approval"><div className="approval-title">Necesita tu OK</div><pre>{`${pending.code} · ${pending.title}\n${pending.why} Estimo ${pending.gain}.\nConfianza ${pending.conf}. ${pending.cost}`}</pre><div className="approval-actions"><button type="button" className="approve" onClick={() => decide(pending, true, true)}>✅ APRUEBO {pending.code}</button><button type="button" className="deny" onClick={() => decide(pending, false, true)}>○ Ahora no</button><span className="approval-note">Nada sube de presupuesto sin tu OK.</span></div></div></div>}
             <div className="vu" aria-hidden="true">{Array.from({ length: 16 }, (_, i) => <i key={i} style={{ height: voice === 'speaking' ? `${20 + ((i * 37) % 70)}%` : '12%' }} />)}</div>
             <button type="button" className="cmd-pill" aria-live="polite" onClick={startReview}><MicIcon size={13} /><span className="cmd-label">{cmdText}</span></button>
             <div className="dock-input terminal"><CommandInput label="dock" disabled={!activated} placeholder="cuéntale algo a Evo: se acabó el juane" onSubmit={ask} /></div>
@@ -957,12 +956,12 @@ function App() {
             {D.six.map(([k, v, prev]) => <div className="kpi-row" key={k}><span>{k}</span><span><b>{v}</b><em>{prev}</em></span></div>)}
             <button type="button" className="mini-btn" onClick={() => openBoards()}>▦ PEDIR UN TABLERO</button>
           </Panel>
-          <Panel onHelp={help} id="p-hice" name="LO QUE HICE" tag="CON SU MOTIVO" className="grow" bodyClass="log">
-            {log.map(a => <div className="hap" key={a.id}><span className="hap-time">[{a.when}]</span><span className="hap-title">{undone[a.id] ? '↺ ' : ''}{a.what}</span><span className="hap-detail">{a.why}</span>{a.undo && !undone[a.id] && <button type="button" className="mini-btn" onClick={() => undo(a)}>DESHACER</button>}</div>)}
+          <Panel onHelp={help} id="p-hice" name="LO QUE SE HIZO" tag="QUIÉN Y CON QUÉ APROBACIÓN" className="grow" bodyClass="log">
+            {log.map(a => <div className="hap" key={a.id}><span className="hap-time">[{a.when}]</span><span className="hap-title">{undone[a.id] ? '↺ ' : ''}{a.what}</span><span className="hap-detail">{a.why}</span></div>)}
           </Panel>
           <Panel onHelp={help} id="p-aprobar" name="POR APROBAR" tag={`${pendingCount} PENDIENTES`}>
             <div>
-              {D.decisions.map(d => <div className="dec" key={d.id}><b>{resolved[d.id] === 'ok' ? '✓ ' : resolved[d.id] === 'no' ? '○ ' : ''}{d.title}</b>{d.why} {d.gain}.<div className="conf">CONFIANZA <b className={d.conf}>{d.conf.toUpperCase()}</b> · {d.cost}</div>{!resolved[d.id] && <div><button type="button" className="mini-btn ok" onClick={() => decide(d, true)}>APROBAR</button><button type="button" className="mini-btn" onClick={() => decide(d, false)}>AHORA NO</button></div>}</div>)}
+              {D.decisions.map(d => <div className="dec" key={d.id}><b>{resolved[d.id] === 'ok' ? '✓ ' : resolved[d.id] === 'no' ? '○ ' : ''}{d.title}</b>{d.why} {d.gain}.<div className="conf">CONFIANZA <b className={d.conf}>{d.conf.toUpperCase()}</b> · {d.cost}</div>{!resolved[d.id] && <div><button type="button" className="mini-btn ok" onClick={() => decide(d, true)}>APRUEBO {d.code}</button><button type="button" className="mini-btn" onClick={() => decide(d, false)}>AHORA NO</button></div>}</div>)}
             </div>
             <div className="terminal" aria-live="polite">
               {lines.map(l => <div key={l.id} className={`t-line ${l.err ? 'err' : ''}`}>{l.text}</div>)}
@@ -973,8 +972,8 @@ function App() {
       </main>
 
       <footer className="botbar">
-        <div className="foot-l"><span className={`foot-chip ${paused ? '' : 'on'}`}>{paused ? '■ ANUNCIOS EN PAUSA' : '● ANUNCIOS ACTIVOS'}</span><span className="foot-chip">META + GOOGLE</span><span className="foot-chip">NADA SUBE DE PRESUPUESTO SIN TU OK</span><span className="foot-chip">GARANTÍA: CLARIDAD Y 3× TU PAUTA A LOS 60 DÍAS</span></div>
-        <div className="foot-r"><span>SOPORTE · EQUIPO EVO · MENOS DE 8 H</span></div>
+        <div className="foot-l"><span className={`foot-chip ${paused ? '' : 'on'}`}>{paused ? '■ ANUNCIOS EN PAUSA' : '● ANUNCIOS ACTIVOS'}</span><span className="foot-chip">META · GOOGLE Y TIKTOK EN DESARROLLO</span><span className="foot-chip">NADA SUBE DE PRESUPUESTO SIN TU OK</span><span className="foot-chip">NO GARANTIZAMOS CIFRAS: CADA NÚMERO CON SU FUENTE</span></div>
+        <div className="foot-r"><span>EVO CON EQUIPO · RESPONSABLE: FRANCO</span></div>
       </footer>
 
       {stage && <div className="stage-overlay" role="dialog" aria-label={stage.title}><div className="stage-body"><h3>{stage.title}</h3>{stage.body.map(([k, v]) => <p key={k}><strong>{k}</strong><br />{v}</p>)}<div className="note">En la app real cada línea abre su detalle. Nunca verás impresiones, alcance ni clics sueltos.</div></div><div className="stage-title">{stage.title}</div><button type="button" className="stage-close" onClick={() => setStage(null)}>✕ CERRAR</button></div>}
@@ -989,7 +988,7 @@ function App() {
           <div className="boot-bar"><div className="boot-fill" style={{ width: `${bootShown}%` }} /></div>
           <div className="boot-cols"><div className="boot-log">{BOOT_STEPS.map((s, i) => <div key={s} className={bootDone[i] ? 'done' : ''}>{s}</div>)}</div><div className="boot-tags"><div>{D.operator}</div><div>EVO</div><div>LIMA, PERÚ</div></div></div>
           {bootReady && <div className="boot-ready">TOCA PARA ENTRAR</div>}
-          {bootReady && <div className="boot-note">DEMOSTRACIÓN CON DATOS DE EJEMPLO · LA VOZ REAL VIVE EN LA APP</div>}
+          {bootReady && <div className="boot-note">DEMOSTRACIÓN CON DATOS DE EJEMPLO · LA VOZ ESTÁ EN PROTOTIPO</div>}
         </div>
         <div className="boot-credit">{D.brand}</div>
       </div>
